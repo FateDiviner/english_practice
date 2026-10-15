@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# 环境变量（凭证严禁入库）
+.env
+.env.local
+.env.*.local
+backend/.env
+!backend/.env.example
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+
+# 数据库与运行时
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
+storage/
+
+# IDE / OS
+.idea/
+.vscode/
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/

@@ -1,0 +1,165 @@
+/** 全项目数据实体集中定义，严禁散落 any。 */
+
+/** 单词本（词书）卡片 */
+export interface WordBook {
+  id: number;
+  code: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  total_words: number;
+}
+
+/** 词书学习进度 */
+export interface WordBookProgress {
+  wordbook_id: number;
+  total_words: number;
+  mastered: number;
+  learning: number;
+  wrong: number;
+  untouched: number;
+  accuracy: number;
+}
+
+/** 单词完整信息（结算复盘用） */
+export interface Word {
+  id: number;
+  word: string;
+  phonetic: string;
+  translation: string;
+  example_en: string;
+  example_cn: string;
+}
+
+/** 用户信息 */
+export interface UserInfo {
+  id: number;
+  username: string;
+  is_guest: boolean;
+  active_wordbook_id: number | null;
+  consecutive_days: number;
+  created_at: string;
+}
+
+/** 认证响应 */
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: UserInfo;
+  migrated: boolean;
+}
+
+/** 默写线索 */
+export interface WordClue {
+  id: number;
+  translation: string;
+  phonetic: string;
+  example_en_masked: string;
+  example_cn: string;
+  pos: string;
+  /** 发音所需的文本，仅供 speechSynthesis 朗读使用 */
+  speak: string;
+}
+
+/** 练习开场响应 */
+export interface PracticeStartResponse {
+  session_id: string;
+  wordbook_id: number;
+  mode: "normal" | "wrong_book";
+  total: number;
+  clues: WordClue[];
+}
+
+/** 逐字符比对单元 */
+export interface DiffCell {
+  char: string;
+  status: "same" | "wrong" | "extra" | "missing";
+}
+
+/** 单次提交校验结果 */
+export interface SubmitResponse {
+  correct: boolean;
+  answer: string;
+  submitted: string;
+  pos: string;
+  phonetic: string;
+  translation: string;
+  diff: DiffCell[];
+  message: string;
+  wrong_count: number;
+  answered: number;
+  total: number;
+}
+
+/** 提示响应 */
+export interface HintResponse {
+  word_id: number;
+  masked: string;
+  first_letter: string;
+  hint_level: number;
+}
+
+/** 结算条目 */
+export interface SettlementItem {
+  word_id: number;
+  word: string;
+  phonetic: string;
+  translation: string;
+  correct: boolean;
+  submitted: string;
+  skipped: boolean;
+}
+
+/** 练习结算 */
+export interface SettlementResponse {
+  session_id: string;
+  wordbook_id: number;
+  total: number;
+  correct_count: number;
+  wrong_count: number;
+  accuracy: number;
+  duration_ms: number;
+  items: SettlementItem[];
+}
+
+/** 错题本条目 */
+export interface WrongBookItem {
+  word_id: number;
+  wordbook_id: number;
+  word: string;
+  phonetic: string;
+  translation: string;
+  wrong_count: number;
+  example_en: string;
+  example_cn: string;
+  last_practiced: string | null;
+}
+
+/** 错题本 */
+export interface WrongBookResponse {
+  total: number;
+  items: WrongBookItem[];
+}
+
+/** 实时纠错结构化区块 */
+export interface FeedbackBlock {
+  grammar: string;
+  polish: string[];
+}
+
+/** 对话消息 */
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant" | "system";
+  content: string;
+  feedback: FeedbackBlock | null;
+  created_at: string;
+}
+
+/** 快捷 Prompt 指令 */
+export type ChatPreset = "explain_word" | "grammar_check" | "free_chat";
+
+/** 后端统一错误体 */
+export interface ApiError {
+  detail: string;
+}
