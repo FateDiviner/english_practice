@@ -84,12 +84,25 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 ## 测试与门禁
 
 ```bash
-# 后端：2696 项测试
+# 后端：2697 项测试（默认跑临时 SQLite，零配置）
 cd backend && .venv/Scripts/python -m pytest
+
+# 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
+RUN_MYSQL_TESTS=1 .venv/Scripts/python -m pytest
+
+# 真实大模型连通性冒烟（唯一会调用付费接口的脚本）
+.venv/Scripts/python -X utf8 -m scripts.ai_smoke
 
 # 前端：lint 0 error + 类型检查 + 构建
 cd frontend && npm run lint && npm run build
 ```
+
+`RUN_MYSQL_TESTS=1` 时，连接串由 `.env` 的 `DATABASE_URL` 自动把库名改写为
+`<库名>_test`，凭证只存在于进程环境变量，不会进入命令行或日志；且强制要求
+库名含 `test`，并在开跑前 `drop_all` 重建，防止误清生产数据。
+
+pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保证断言确定、
+不消耗 API 额度；真实模型只通过 `scripts/ai_smoke.py` 验证。
 
 测试覆盖：遗忘曲线调度、拼写校验与逐字符比对、例句挖空防泄漏、纠错区块解析、
 端到端 API 流程（含游客数据迁移、越权会话拒绝、SSE 流式一致性）、词书数据质量
@@ -115,5 +128,15 @@ cd frontend && npm run lint && npm run build
 | :--- | :--- | :--- |
 | Phase 1 | 数据库建表、313 词导入、注册登录与游客迁移 | 已完成 |
 | Phase 2 | 默写核心界面、全键盘交互、即时判定、错题沉淀 | 已完成 |
-| Phase 3 | AI 对话、SSE 流式、实时纠错卡片 | 已完成（未配置密钥时走 Mock） |
-| Phase 4 | 联调、界面美化、端到端验证 | 待配置 MySQL / AI 凭证后执行 |
+| Phase 3 | AI 对话、SSE 流式、实时纠错卡片 | 已完成，真实模型连通性已验证 |
+| Phase 4 | 联调、界面美化、端到端验证 | 后端联调完成（MySQL 全量测试通过），界面美化与浏览器端实操待验收 |
+
+### 已验证事实
+
+- MySQL 8.0 连接、建表、313 词导入与幂等重跑均正常（`dialect: mysql`）。
+- 整套 2697 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
+- 真实模型端点为 OpenAI 兼容 SSE，逐字流式可用（实测分片间隔最大 0.26s），
+  `[语法指正]` / `[地道表达]` 两个区块均能被正确解析。
+- 首字延迟受网络路径影响波动较大：受控 A/B 实测 **0.74 ~ 2.2s**（典型值约 1s），
+  但在部分时段曾观测到 8 ~ 19s。同一时刻对比长短请求无差异，可确认瓶颈在
+  网络与端点侧而非请求体或客户端实现，故未做无效改动。
