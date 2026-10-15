@@ -39,6 +39,7 @@ const PRESETS: PresetItem[] = [
 function FeedbackCard({ feedback }: { feedback: FeedbackBlock }) {
   return (
     <div
+      data-testid="chat-feedback"
       style={{
         marginTop: 8,
         padding: "10px 12px",
@@ -295,6 +296,7 @@ export default function ChatPage() {
               }}
             >
               <div
+                data-testid={`chat-bubble-${message.role}`}
                 style={{
                   maxWidth: "78%",
                   padding: "10px 14px",
@@ -317,7 +319,7 @@ export default function ChatPage() {
           ))}
 
           {streaming && (
-            <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
+            <div data-testid="chat-streaming" style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
               <div
                 style={{
                   maxWidth: "78%",

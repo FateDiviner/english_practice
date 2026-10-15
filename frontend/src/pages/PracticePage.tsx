@@ -27,18 +27,59 @@ import { useSpeech } from "@/hooks/useSpeech";
 /** 答对后自动切词的等待时长（AGENTS.md 规范：600~800ms） */
 const AUTO_ADVANCE_MS = 700;
 
-/** 逐字符比对结果渲染 */
+/**
+ * 逐字符比对结果渲染。
+ *
+ * 后端返回的是单条交错序列（错误字符与漏写字符交替），
+ * 直接铺开会读成 "zazbzaznzdon" 这种无从辨认的串。
+ * 这里按状态拆成两行，分别还原"你输入了什么"与"正确拼写是什么"：
+ *   - typed  取 same / wrong / extra  -> 精确还原用户输入
+ *   - answer 取 same / missing        -> 精确还原标准答案
+ */
 function DiffText({ cells }: { cells: DiffCell[] }) {
-  return (
+  const typed = cells.filter(
+    (cell) => cell.status === "same" || cell.status === "wrong" || cell.status === "extra"
+  );
+  const answer = cells.filter(
+    (cell) => cell.status === "same" || cell.status === "missing"
+  );
+
+  const row = (label: string, items: DiffCell[], rowKey: string) => (
     <div
-      className="phonetic-display"
-      style={{ fontSize: 20, letterSpacing: "0.04em", wordBreak: "break-all" }}
+      key={rowKey}
+      style={{ display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}
     >
-      {cells.map((cell, index) => (
-        <span key={`${cell.status}-${index}`} className={`diff-${cell.status}`}>
-          {cell.char}
-        </span>
-      ))}
+      <span
+        style={{
+          fontSize: 13,
+          color: "var(--text-3)",
+          minWidth: 60,
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        className="phonetic-display"
+        style={{
+          fontSize: 21,
+          letterSpacing: "0.06em",
+          wordBreak: "break-all",
+        }}
+      >
+        {items.map((cell, index) => (
+          <span key={`${cell.status}-${index}`} className={`diff-${cell.status}`}>
+            {cell.char}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {row("你的输入", typed, "typed")}
+      {row("正确拼写", answer, "answer")}
     </div>
   );
 }
@@ -157,8 +198,14 @@ export default function PracticePage() {
 
   const handleSkip = useCallback(() => {
     if (!session || phase === "submitting" || phase === "correct") return;
+    // 已处于错误反馈态：答案已展示、错题已落库，此时跳过应直接切下一词。
+    // 否则再次提交只会把状态又打回 wrong，用户会卡在原地无法推进。
+    if (phase === "wrong") {
+      void advance();
+      return;
+    }
     void submit(value, true);
-  }, [session, phase, submit, value]);
+  }, [session, phase, submit, value, advance]);
 
   const handleHint = useCallback(() => {
     if (!session) return;
@@ -466,15 +513,6 @@ export default function PracticePage() {
 
               {result && result.diff.length > 0 && <DiffText cells={result.diff} />}
 
-              <Space size={10} align="center" wrap style={{ marginTop: 8 }}>
-                <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                  正确拼写
-                </Typography.Text>
-                <span className="word-display" style={{ fontSize: 26 }}>
-                  {result?.answer}
-                </span>
-                <span className="phonetic-display">{result?.phonetic}</span>
-              </Space>
 
               <Typography.Text type="secondary" style={{ display: "block", fontSize: 13, marginTop: 6 }}>
                 可原地订正后按 Enter 再次校验，或直接按 Enter 进入下一词。
