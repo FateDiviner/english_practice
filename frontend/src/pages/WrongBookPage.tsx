@@ -8,14 +8,21 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from "@arco-design/web-react";
-import { IconBulb, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
+import {
+  IconBulb,
+  IconMessage,
+  IconPlayArrow,
+  IconRefresh,
+} from "@arco-design/web-react/icon";
 import type { WrongBookItem } from "@/types";
 import { fetchWrongBook } from "@/api/practice";
 import { usePracticeStore } from "@/stores/practice";
 import { useSpeech } from "@/hooks/useSpeech";
 import { toMessage } from "@/api/client";
+import { writeChatContext } from "@/utils/chatContext";
 
 /** 错题本（生词本）：查看并一键开启错题专项重练 */
 export default function WrongBookPage() {
@@ -42,6 +49,18 @@ export default function WrongBookPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** 带着这个词与例句跳到伴学页，省去手动描述 */
+  const askAbout = (item: WrongBookItem) => {
+    writeChatContext({
+      word: item.word,
+      translation: item.translation,
+      phonetic: item.phonetic,
+      example: item.example_en,
+      source: "wrong_book",
+    });
+    navigate("/chat");
+  };
 
   const handleStart = async () => {
     const first = items[0];
@@ -128,17 +147,29 @@ export default function WrongBookPage() {
                     </Tag>
                   </Space>
 
-                  <Button
-                    size="small"
-                    className="focus-ring"
-                    icon={<IconPlayArrow />}
-                    onClick={() => {
-                      if (supported) void speak(item.word);
-                      else Message.info({ content: "当前浏览器不支持语音合成" });
-                    }}
-                  >
-                    发音
-                  </Button>
+                  <Space size={8}>
+                    <Button
+                      size="small"
+                      className="focus-ring"
+                      icon={<IconPlayArrow />}
+                      onClick={() => {
+                        if (supported) void speak(item.word);
+                        else Message.info({ content: "当前浏览器不支持语音合成" });
+                      }}
+                    >
+                      发音
+                    </Button>
+                    <Tooltip content="带上这个词与例句，让 AI 讲解">
+                      <Button
+                        size="small"
+                        className="focus-ring"
+                        icon={<IconMessage />}
+                        onClick={() => askAbout(item)}
+                      >
+                        AI 讲解
+                      </Button>
+                    </Tooltip>
+                  </Space>
                 </Space>
 
                 <Typography.Text style={{ display: "block", marginTop: 6 }}>

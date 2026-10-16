@@ -23,6 +23,7 @@ import type { DiffCell } from "@/types";
 import { usePracticeStore } from "@/stores/practice";
 import { usePracticeHotkeys } from "@/hooks/usePracticeHotkeys";
 import { useSpeech } from "@/hooks/useSpeech";
+import { writeChatContext } from "@/utils/chatContext";
 
 /** 答对后自动切词的等待时长（AGENTS.md 规范：600~800ms） */
 const AUTO_ADVANCE_MS = 700;
@@ -155,6 +156,18 @@ export default function PracticePage() {
     const id = setTimeout(() => setShake(false), 320);
     return () => clearTimeout(id);
   }, [phase, index]);
+
+  /* ---------------- 答错时把上下文交给伴学页 ---------------- */
+  useEffect(() => {
+    if (phase !== "wrong" || !result || !clue) return;
+    writeChatContext({
+      word: result.answer,
+      translation: clue.translation,
+      phonetic: clue.phonetic,
+      typed: result.submitted,
+      source: "practice",
+    });
+  }, [phase, result, clue]);
 
   /* ---------------- 新词切换时清空输入 ---------------- */
   useEffect(() => {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatPage from "@/pages/ChatPage";
 import { fetchMessages, streamChat } from "@/api/chat";
+import { writeChatContext } from "@/utils/chatContext";
 import type { ChatMessage } from "@/types";
 
 vi.mock("@/api/chat", () => ({
@@ -28,8 +29,20 @@ const assistantMessage: ChatMessage = {
 };
 
 beforeEach(() => {
+  sessionStorage.clear();
   mockedFetchMessages.mockResolvedValue([]);
 });
+
+function mockStreamDone() {
+  mockedStreamChat.mockImplementation(async (_options, handlers) => {
+    handlers.onDone({
+      message_id: 21,
+      content: "Sure, let us look at that word.",
+      feedback: null,
+      created_at: "2026-10-16T08:00:00.000Z",
+    });
+  });
+}
 
 describe("AI 伴学对话框布局", () => {
   it("消息区挂在可滚动的 flex 链路上，卡片本身裁剪溢出", async () => {
@@ -122,5 +135,126 @@ describe("AI 伴学纠错区块展示", () => {
     expect(await screen.findByTestId("chat-feedback")).toBeTruthy();
     expect(screen.getByText("[语法指正]")).toBeTruthy();
     expect(screen.getByText("[地道表达]")).toBeTruthy();
+  });
+});
+
+describe("讲解对象", () => {
+  it("从 sessionStorage 读入并展示词与释义", async () => {
+    writeChatContext({
+      word: "abandon",
+      translation: "v. 放弃，遗弃",
+      source: "wrong_book",
+    });
+    render(<ChatPage />);
+
+    const bar = await screen.findByTestId("chat-context");
+    expect(bar.textContent).toContain("当前讲解对象");
+    expect(bar.textContent).toContain("abandon");
+    expect(bar.textContent).toContain("v. 放弃，遗弃");
+  });
+
+  it("移除后不再显示，也不再随消息发送", async () => {
+    writeChatContext({ word: "abandon", source: "wrong_book" });
+    mockStreamDone();
+    render(<ChatPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "移除讲解对象" }));
+    expect(screen.queryByTestId("chat-context")).toBeNull();
+
+    const input = await screen.findByLabelText("对话输入框");
+    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 13 });
+
+    await waitFor(() => expect(mockedStreamChat).toHaveBeenCalled());
+    expect(mockedStreamChat.mock.calls[0][0].context).toBeNull();
+  });
+
+  it("带讲解对象时 explain_word 直接把词交给 AI", async () => {
+    writeChatContext({ word: "abandon", source: "wrong_book" });
+    mockStreamDone();
+    render(<ChatPage />);
+
+    fireEvent.click(await screen.findByText("Explain a word"));
+
+    await waitFor(() =>
+      expect(mockedStreamChat).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "abandon", preset: "explain_word" }),
+        expect.anything()
+      )
+    );
+    // 上下文随请求一起发给后端
+    expect(mockedStreamChat.mock.calls[0][0].context).toContain("abandon");
+  });
+
+  it("没有讲解对象时 explain_word 仍发送预设文案", async () => {
+    mockStreamDone();
+    render(<ChatPage />);
+
+    fireEvent.click(await screen.findByText("Explain a word"));
+
+    await waitFor(() =>
+      expect(mockedStreamChat).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "Explain a word" }),
+        expect.anything()
+      )
+    );
+    expect(mockedStreamChat.mock.calls[0][0].context).toBeNull();
+  });
+});
+
+describe("历史按日分组", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  it("今天的对话显示今天分隔", async () => {
+    mockedFetchMessages.mockResolvedValue([
+      {
+        id: 1,
+        role: "user",
+        content: "hello",
+        feedback: null,
+        created_at: `${today}T08:00:00`,
+      },
+    ]);
+    render(<ChatPage />);
+
+    expect(await screen.findByText("今天")).toBeTruthy();
+  });
+
+  it("更早的对话显示昨天", async () => {
+    mockedFetchMessages.mockResolvedValue([
+      {
+        id: 1,
+        role: "user",
+        content: "hello",
+        feedback: null,
+        created_at: `${yesterday}T08:00:00`,
+      },
+    ]);
+    render(<ChatPage />);
+
+    expect(await screen.findByText("昨天")).toBeTruthy();
+  });
+
+  it("同一天的多条消息只出现一个分隔", async () => {
+    mockedFetchMessages.mockResolvedValue([
+      {
+        id: 1,
+        role: "user",
+        content: "hi",
+        feedback: null,
+        created_at: `${today}T08:00:00`,
+      },
+      {
+        id: 2,
+        role: "assistant",
+        content: "hello there",
+        feedback: null,
+        created_at: `${today}T08:01:00`,
+      },
+    ]);
+    render(<ChatPage />);
+
+    expect((await screen.findAllByText("今天")).length).toBe(1);
   });
 });

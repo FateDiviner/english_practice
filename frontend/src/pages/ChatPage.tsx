@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Card,
@@ -18,9 +25,16 @@ import {
   IconSend,
   IconStop,
   IconDelete,
+  IconClose,
 } from "@arco-design/web-react/icon";
 import type { ChatMessage, ChatPreset, FeedbackBlock } from "@/types";
 import { clearMessages, fetchMessages, streamChat } from "@/api/chat";
+import {
+  clearChatContext,
+  describeContext,
+  readChatContext,
+  type ChatContext,
+} from "@/utils/chatContext";
 import { isNearBottom } from "@/utils/scroll";
 import { toMessage } from "@/api/client";
 
@@ -86,6 +100,44 @@ function FeedbackCard({ feedback }: { feedback: FeedbackBlock }) {
   );
 }
 
+/** 单条消息气泡：用户靠右、AI 靠左 */
+function MessageBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: "100%",
+        minWidth: 0,
+        justifyContent: message.role === "user" ? "flex-end" : "flex-start",
+        marginBottom: 12,
+      }}
+    >
+      <div
+        data-testid={`chat-bubble-${message.role}`}
+        style={{
+          maxWidth: "78%",
+          minWidth: 0,
+          padding: "10px 14px",
+          borderRadius: "var(--border-radius-md)",
+          background:
+            message.role === "user"
+              ? "var(--color-primary)"
+              : "var(--bg-subtle)",
+          color: message.role === "user" ? "#fff" : "var(--text-1)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.65 }}>{message.content}</div>
+        {message.feedback && message.role === "assistant" && (
+          <FeedbackCard feedback={message.feedback} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** AI 英语对话助教：SSE 流式输出 + 实时纠错 */
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -95,6 +147,8 @@ export default function ChatPage() {
   const [streamFeedback, setStreamFeedback] = useState<FeedbackBlock | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // 从默写页 / 错题本带过来的讲解对象
+  const [context, setContext] = useState<ChatContext | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -119,11 +173,11 @@ export default function ChatPage() {
 
   useEffect(() => {
     void loadHistory();
-    // 从默写页带过来的上下文（最近拼错的词）
-    const fromStorage = sessionStorage.getItem("ep_chat_context");
+    // 从默写页 / 错题本带过来的上下文（读一次即焚）
+    const fromStorage = readChatContext();
     if (fromStorage) {
-      contextRef.current = fromStorage;
-      sessionStorage.removeItem("ep_chat_context");
+      setContext(fromStorage);
+      contextRef.current = describeContext(fromStorage);
     }
     return () => abortRef.current?.abort();
   }, [loadHistory]);
@@ -250,7 +304,31 @@ export default function ChatPage() {
 
   const askPreset = (preset: ChatPreset) => {
     const label = PRESETS.find((item) => item.key === preset)?.label ?? "";
-    void send(label, preset);
+    // 带着讲解对象时直接把词交给 AI，比发一句 "Explain a word" 更明确
+    const content = preset === "explain_word" && context ? context.word : label;
+    void send(content, preset);
+  };
+
+  const dropContext = () => {
+    setContext(null);
+    contextRef.current = null;
+    clearChatContext();
+  };
+
+  /** 历史按日分组；日期口径与全项目一致，取 UTC 自然日 */
+  const dayMarks = useMemo(() => {
+    const now = new Date();
+    return {
+      today: now.toISOString().slice(0, 10),
+      yesterday: new Date(now.getTime() - 86400000).toISOString().slice(0, 10),
+    };
+  }, []);
+
+  const labelOf = (iso: string) => {
+    const day = iso.slice(0, 10);
+    if (day === dayMarks.today) return "今天";
+    if (day === dayMarks.yesterday) return "昨天";
+    return day;
   };
 
   return (
@@ -278,6 +356,43 @@ export default function ChatPage() {
           清空记录
         </Button>
       </Space>
+
+      {context && (
+        <div
+          data-testid="chat-context"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 12,
+            padding: "8px 12px",
+            borderRadius: "var(--border-radius-md)",
+            background: "var(--color-primary-soft)",
+            borderLeft: "3px solid var(--color-primary)",
+          }}
+        >
+          <Typography.Text style={{ fontSize: 13 }}>当前讲解对象</Typography.Text>
+          <Tag size="small" color="arcoblue">
+            {context.word}
+          </Tag>
+          {context.translation && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {context.translation}
+            </Typography.Text>
+          )}
+          <Button
+            size="mini"
+            type="text"
+            className="focus-ring"
+            icon={<IconClose />}
+            aria-label="移除讲解对象"
+            onClick={dropContext}
+          >
+            移除
+          </Button>
+        </div>
+      )}
 
       {/* 快捷 Prompt 药丸 */}
       <Space size={8} wrap style={{ marginBottom: 12 }}>
@@ -341,42 +456,23 @@ export default function ChatPage() {
             />
           )}
 
-          {messages.map((message) => (
-            <div
-              key={`${message.role}-${message.id}`}
-              style={{
-                display: "flex",
-                width: "100%",
-                minWidth: 0,
-                justifyContent:
-                  message.role === "user" ? "flex-end" : "flex-start",
-                marginBottom: 12,
-              }}
-            >
-              <div
-                data-testid={`chat-bubble-${message.role}`}
-                style={{
-                  maxWidth: "78%",
-                  minWidth: 0,
-                  padding: "10px 14px",
-                  borderRadius: "var(--border-radius-md)",
-                  background:
-                    message.role === "user"
-                      ? "var(--color-primary)"
-                      : "var(--bg-subtle)",
-                  color: message.role === "user" ? "#fff" : "var(--text-1)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  overflowWrap: "anywhere",
-                }}
-              >
-                <div style={{ fontSize: 14, lineHeight: 1.65 }}>{message.content}</div>
-                {message.feedback && message.role === "assistant" && (
-                  <FeedbackCard feedback={message.feedback} />
+          {messages.map((message, index) => {
+            const label = labelOf(message.created_at);
+            const previous = messages[index - 1];
+            const showDivider = !previous || labelOf(previous.created_at) !== label;
+            return (
+              <Fragment key={`${message.role}-${message.id}`}>
+                {showDivider && (
+                  <div style={{ textAlign: "center", margin: "10px 0 12px" }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {label}
+                    </Typography.Text>
+                  </div>
                 )}
-              </div>
-            </div>
-          ))}
+                <MessageBubble message={message} />
+              </Fragment>
+            );
+          })}
 
           {streaming && (
             <div
