@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,7 +22,8 @@ def member(client: TestClient) -> dict:
     """注册一个普通用户，返回其令牌与用户信息。"""
     response = client.post(
         "/api/auth/register",
-        json={"username": f"member_{id(client)}", "password": "secret123"},
+        # id(client) 会随对象地址复用而重复，跨用例必然撞名 409
+        json={"username": f"member_{uuid.uuid4().hex[:10]}", "password": "secret123"},
     )
     assert response.status_code == 200, response.text
     body = response.json()
