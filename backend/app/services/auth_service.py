@@ -9,8 +9,10 @@ from sqlalchemy.orm import Session
 
 from app.models.chat import ChatMessage
 from app.models.record import UserWordRecord
+from app.models.session import PracticeSessionRecord
 from app.models.user import User
 from app.security import create_access_token, hash_password, verify_password
+from app.services import stats_service
 
 GUEST_PREFIX = "guest_"
 GUEST_PASSWORD = "guest-session-only"
@@ -123,10 +125,21 @@ def migrate_guest_data(db: Session, guest_id: int, target: User) -> bool:
         message.user = target
         moved += 1
 
+    for session_record in db.scalars(
+        select(PracticeSessionRecord).where(PracticeSessionRecord.user_id == guest.id)
+    ).all():
+        session_record.user = target
+        moved += 1
+
     if guest.active_wordbook_id and not target.active_wordbook_id:
         target.active_wordbook_id = guest.active_wordbook_id
-    if guest.consecutive_days > target.consecutive_days:
-        target.consecutive_days = guest.consecutive_days
+
+    # 连续打卡不能直接取两个计数器的较大值：那样会把其中一方已经断签的
+    # 旧天数一起继承下来。练习会话已合并，直接按合并后的日期反推。
+    db.flush()
+    streak, last_on = stats_service.recompute_streak(db, target.id)
+    target.consecutive_days = streak
+    target.last_checkin_date = last_on.isoformat() if last_on else None
 
     db.delete(guest)
     db.flush()

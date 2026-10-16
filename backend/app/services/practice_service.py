@@ -25,7 +25,7 @@ from app.schemas.practice import (
     WrongBookItem,
     WrongBookResponse,
 )
-from app.services import scheduler
+from app.services import scheduler, stats_service
 
 # 例句中目标词的挖空占位
 BLANK_CHAR = "_"
@@ -238,6 +238,8 @@ def submit_answer(
         db.add(record)
 
     scheduler.apply_result(record, correct)
+    # 每次作答即打卡：练到一半退出也算当天练过，不必等到结算
+    stats_service.mark_checkin(db, user_id)
     db.commit()
     db.refresh(record)
 
@@ -299,6 +301,19 @@ def finish_session(db: Session, user_id: int, session_id: str) -> SettlementResp
     wrong_count = total - correct_count
     duration_ms = int((time.time() - session.started_at) * 1000)
     session.finished = True
+
+    if total > 0:
+        stats_service.record_session(
+            db,
+            user_id=user_id,
+            wordbook_id=session.wordbook_id,
+            mode=session.mode,
+            total=total,
+            correct_count=correct_count,
+            wrong_count=wrong_count,
+            duration_ms=duration_ms,
+        )
+        db.commit()
 
     return SettlementResponse(
         session_id=session.id,

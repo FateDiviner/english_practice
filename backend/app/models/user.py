@@ -27,4 +27,6 @@ class User(Base):
     )
 
     records = relationship("UserWordRecord", back_populates="user", lazy="selectin")
+    # 练习会话只在看板与打卡重算时按需查询，不做预加载
+    sessions = relationship("PracticeSessionRecord", back_populates="user")
     messages = relationship("ChatMessage", back_populates="user", lazy="selectin")

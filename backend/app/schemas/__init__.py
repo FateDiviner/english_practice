@@ -7,6 +7,12 @@ from app.schemas.auth import (
     UserInfo,
 )
 from app.schemas.chat import ChatSendRequest, FeedbackBlock, MessageOut
+from app.schemas.stats import (
+    DailyStat,
+    LearningTotals,
+    RecentSession,
+    StatsOverview,
+)
 from app.schemas.practice import (
     HintRequest,
     HintResponse,
@@ -38,4 +44,8 @@ __all__ = [
     "ChatSendRequest",
     "MessageOut",
     "FeedbackBlock",
+    "DailyStat",
+    "RecentSession",
+    "LearningTotals",
+    "StatsOverview",
 ]

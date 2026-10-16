@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, chat, practice, wordbooks
+from app.api import auth, chat, practice, stats, wordbooks
 from app.config import get_settings
 from app.db import init_db
 
@@ -25,7 +25,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="英语练习平台",
     description="默写记忆 + AI 场景实战的极简英语练习后端",
-    version="1.2.1",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
@@ -53,4 +53,5 @@ def health() -> dict:
 app.include_router(auth.router)
 app.include_router(wordbooks.router)
 app.include_router(practice.router)
+app.include_router(stats.router)
 app.include_router(chat.router)
