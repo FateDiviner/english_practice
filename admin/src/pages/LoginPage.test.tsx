@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "@/pages/LoginPage";
 import { login } from "@/api/auth";
 import { getToken } from "@/api/client";
+import type { AdminUserOut } from "@/types";
 
 vi.mock("@/api/auth", () => ({
   login: vi.fn(),
@@ -10,6 +11,19 @@ vi.mock("@/api/auth", () => ({
 }));
 
 const mockedLogin = vi.mocked(login);
+
+const SELF: AdminUserOut = {
+  id: 1,
+  username: "root",
+  is_guest: false,
+  role: "admin",
+  status: "active",
+  active_wordbook_id: null,
+  consecutive_days: 0,
+  created_at: "2026-10-16T00:00:00",
+  last_practiced_at: null,
+  practice_count: 0,
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -21,7 +35,7 @@ describe("管理端登录", () => {
     mockedLogin.mockResolvedValue({
       access_token: "tok",
       token_type: "bearer",
-      user: { id: 1, username: "root", is_guest: false, role: "admin" },
+      user: { ...SELF, username: "root", role: "admin" },
     });
     render(<LoginPage onLoggedIn={onLoggedIn} />);
 
@@ -38,7 +52,7 @@ describe("管理端登录", () => {
     mockedLogin.mockResolvedValue({
       access_token: "tok",
       token_type: "bearer",
-      user: { id: 2, username: "bob", is_guest: false, role: "user" },
+      user: { ...SELF, id: 2, username: "bob", role: "user" },
     });
     render(<LoginPage onLoggedIn={onLoggedIn} />);
 

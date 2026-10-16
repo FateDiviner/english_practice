@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "english-practice-core"
-version = "1.6.0"
+version = "1.7.0"
 description = "英语练习平台共享核心层：数据模型、连接、配置与账号校验"
 requires-python = ">=3.11"
 dependencies = [

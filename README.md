@@ -31,7 +31,7 @@ english_practice/
 │   │   └── schemas/       Pydantic 请求 / 响应契约
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
 │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             3170 项自动化测试
+│   └── tests/             3175 项自动化测试
 ├── admin_api/          管理端 API（独立进程，端口 8100）
 │   ├── api/             管理员认证、用户管理、审计
 │   ├── services/        封禁 / 删除等管理逻辑，与用户端业务互不混用
@@ -74,10 +74,14 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 
 ### 3. 管理端（可选）
 
+管理端前端与后端**都与用户端分离**：前端 `admin/`（端口 5174）、后端
+`admin_api/`（端口 8100），两端共用 `core/` 的表结构与同一个数据库账号，
+因此可以只把 `admin_api` 与 `admin/` 放在内网，公网只暴露用户端。
+
 ```bash
 cd admin
 npm install
-npm run dev                # http://localhost:5174，/api 已代理至 :8000
+npm run dev                # http://localhost:5174，/api 已代理至管理端 :8100
 
 # 3. 管理端后端（与用户端分进程，共用 core 的同一套表结构）
 cd admin_api
@@ -114,7 +118,7 @@ cd admin_api
 ## 测试与门禁
 
 ```bash
-# 后端：3170 项测试（默认跑临时 SQLite，零配置）
+# 后端：3175 项测试（默认跑临时 SQLite，零配置）
 cd backend && .venv/Scripts/python -m pytest
 
 # 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
@@ -199,6 +203,7 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 | v1.4.0 | 2026-10-16 | 学习数据防丢：游客身份常驻风险提示，新增 `GET /api/user/export` 与 `POST /api/user/import`，备份可在账号之间搬运 |
 | v1.5.0 | 2026-10-16 | AI 伴学闭环：默写答错与错题本「AI 讲解」自动带上讲解对象，伴学页展示并可移除；历史按日分组 |
 | v1.6.0 | 2026-10-16 | 管理端地基：role 权限模型与 require_admin、审计日志只增不改、词书与词条软删除、数据质量校验器下沉、独立 admin 工程 |
+| v1.7.0 | 2026-10-16 | 管理端后端完全分离为 admin_api（分进程、可切内网部署），新增管理员注册页与用户管理（新增/启用/封禁/删除，封禁即时失效） |
 
 ## 里程碑状态
 
@@ -212,7 +217,7 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 ### 已验证事实
 
 - MySQL 8.0 连接、建表、313 词导入与幂等重跑均正常（`dialect: mysql`）。
-- 整套 3170 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致通过，且测试基座
+- 整套 3175 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致通过，且测试基座
 会断言 RUN_MYSQL_TESTS=1 时确实连的是 MySQL——防止 .env 读不到时静默回退成
 SQLite，把「外部库上全绿」变成假象。管理端另有 39 项独立测试。
 - 真实模型端点为 OpenAI 兼容 SSE，逐字流式可用（实测分片间隔最大 0.26s），

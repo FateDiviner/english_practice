@@ -2,7 +2,7 @@ import { http } from "./client";
 import type { AdminUser, LoginResponse } from "@/types";
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
-  const { data } = await http.post<LoginResponse>("/api/auth/login", {
+  const { data } = await http.post<LoginResponse>("/api/admin/auth/login", {
     username,
     password,
   });
@@ -10,6 +10,6 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 export async function fetchMe(): Promise<AdminUser> {
-  const { data } = await http.get<AdminUser>("/api/auth/me");
+  const { data } = await http.get<AdminUser>("/api/admin/auth/me");
   return data;
 }

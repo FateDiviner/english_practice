@@ -12,7 +12,13 @@ interface FormValues {
 }
 
 /** 管理端登录：只有管理员角色能进入，普通用户会被接口以 403 拒绝 */
-export default function LoginPage({ onLoggedIn }: { onLoggedIn: (user: AdminUser) => void }) {
+export default function LoginPage({
+  onLoggedIn,
+  onGoToRegister,
+}: {
+  onLoggedIn: (user: AdminUser) => void;
+  onGoToRegister?: () => void;
+}) {
   const [pending, setPending] = useState(false);
   const [form] = Form.useForm<FormValues>();
 
@@ -86,6 +92,17 @@ export default function LoginPage({ onLoggedIn }: { onLoggedIn: (user: AdminUser
           >
             登录
           </Button>
+          {onGoToRegister && (
+            <Button
+              type="text"
+              long
+              className="focus-ring"
+              style={{ marginTop: 10 }}
+              onClick={onGoToRegister}
+            >
+              还没有管理员账号，去注册
+            </Button>
+          )}
         </Form>
       </Card>
     </div>

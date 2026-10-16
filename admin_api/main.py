@@ -28,7 +28,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="英语练习平台 · 管理端",
     description="用户管理、词库管理与审计留痕；与用户端分进程部署",
-    version="1.6.0",
+    version="1.7.0",
     lifespan=lifespan,
 )
 

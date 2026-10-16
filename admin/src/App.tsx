@@ -5,9 +5,12 @@ import {
   IconMoon,
   IconPoweroff,
   IconSun,
+  IconUser,
 } from "@arco-design/web-react/icon";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
+import UsersPage from "@/pages/UsersPage";
 import AuditPage from "@/pages/AuditPage";
 import { fetchMe } from "@/api/auth";
 import { clearToken, getToken } from "@/api/client";
@@ -16,6 +19,7 @@ import type { AdminUser } from "@/types";
 export default function App() {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [checking, setChecking] = useState(true);
+  const [view, setView] = useState<"login" | "register">("login");
   const [dark, setDark] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +65,22 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginPage onLoggedIn={setUser} />;
+    if (view === "register") {
+      return (
+        <RegisterPage
+          onRegistered={() => {
+            // 注册成功即已持令牌，重新做一次身份校验拿完整用户信息
+            setChecking(true);
+            void fetchMe()
+              .then((me) => (me.role === "admin" ? setUser(me) : clearToken()))
+              .catch(() => clearToken())
+              .finally(() => setChecking(false));
+          }}
+          onBackToLogin={() => setView("login")}
+        />
+      );
+    }
+    return <LoginPage onLoggedIn={setUser} onGoToRegister={() => setView("register")} />;
   }
 
   return (
@@ -103,6 +122,14 @@ export default function App() {
       <Layout style={{ maxWidth: 1120, width: "100%", margin: "0 auto", padding: 20 }}>
         <Space size={8} style={{ marginBottom: 16 }}>
           <Button
+            type={location.pathname.startsWith("/users") ? "primary" : "text"}
+            className="focus-ring"
+            icon={<IconUser />}
+            onClick={() => navigate("/users")}
+          >
+            用户管理
+          </Button>
+          <Button
             type={location.pathname.startsWith("/audit-logs") ? "primary" : "text"}
             className="focus-ring"
             icon={<IconHistory />}
@@ -113,7 +140,8 @@ export default function App() {
         </Space>
 
         <Routes>
-          <Route path="/" element={<AuditPage />} />
+          <Route path="/" element={<UsersPage currentUser={user} />} />
+          <Route path="/users" element={<UsersPage currentUser={user} />} />
           <Route path="/audit-logs" element={<AuditPage />} />
         </Routes>
       </Layout>

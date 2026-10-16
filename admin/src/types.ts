@@ -5,12 +5,37 @@ export interface AdminUser {
   username: string;
   is_guest: boolean;
   role: "user" | "admin";
+  status: "active" | "banned";
+  active_wordbook_id: number | null;
+  consecutive_days: number;
+  created_at: string;
+  last_practiced_at: string | null;
+  practice_count: number;
 }
+
+/** 后端 AdminUserOut 与登录返回的 user 是同一份结构 */
+export type AdminUserOut = AdminUser;
 
 export interface LoginResponse {
   access_token: string;
   token_type: string;
   user: AdminUser;
+}
+
+export interface AdminUserListPage {
+  total: number;
+  items: AdminUserOut[];
+}
+
+export interface CreateUserPayload {
+  username: string;
+  password: string;
+  role: "user" | "admin";
+}
+
+export interface UpdateUserPayload {
+  role?: "user" | "admin";
+  status?: "active" | "banned";
 }
 
 export interface AuditLogOut {
