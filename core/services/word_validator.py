@@ -144,12 +144,42 @@ def validate_book(payload: dict) -> ValidationResult:
     return result
 
 
+def validate_book_deep(payload: dict) -> ValidationResult:
+    """结构校验 + 逐词条校验，供批量导入产出可定位的错误报告。
+
+    issue.field 形如 words[3].phonetic，message 前缀形如 [abandon]，
+    让使用者一眼知道是哪本书的第几条、哪个词、违反了哪条红线。
+    """
+    result = validate_book(payload)
+    if not payload.get("words"):
+        return result
+
+    for index, item in enumerate(payload["words"]):
+        if not isinstance(item, dict):
+            result.add(
+                "missing_field",
+                f"words[{index}]",
+                f"第 {index + 1} 条不是对象",
+            )
+            continue
+        label = str(item.get("word") or f"#{index + 1}")
+        for issue in validate_word(item).issues:
+            result.issues.append(
+                ValidationIssue(
+                    rule=issue.rule,
+                    field=f"words[{index}].{issue.field}",
+                    message=f"[{label}] {issue.message}",
+                )
+            )
+    return result
+
+
 def validate_batch(books: list[dict]) -> ValidationResult:
     """校验一批词书，附带跨词书的 code 唯一性。"""
     result = ValidationResult()
     codes: set[str] = set()
     for payload in books:
-        merged = validate_book(payload)
+        merged = validate_book_deep(payload)
         result.issues.extend(merged.issues)
         for item in merged.issues:
             item.message = f"[{payload.get('code', '?')}] {item.message}"

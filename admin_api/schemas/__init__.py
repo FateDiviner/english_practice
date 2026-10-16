@@ -1,6 +1,16 @@
 """管理端请求 / 响应契约。"""
 
 from admin_api.schemas.audit import AuditLogOut, AuditLogPage
+from admin_api.schemas.words import (
+    ImportResult,
+    ValidationIssueOut,
+    WordAdminOut,
+    WordPage,
+    WordbookAdminOut,
+    WordbookUpdateRequest,
+    WordbookUpsertRequest,
+    WordUpsertRequest,
+)
 from admin_api.schemas.auth import (
     AdminAuthResponse,
     AdminLoginRequest,
@@ -23,4 +33,12 @@ __all__ = [
     "AdminUserListPage",
     "AuditLogOut",
     "AuditLogPage",
+    "WordbookAdminOut",
+    "WordbookUpsertRequest",
+    "WordbookUpdateRequest",
+    "WordAdminOut",
+    "WordPage",
+    "WordUpsertRequest",
+    "ValidationIssueOut",
+    "ImportResult",
 ]

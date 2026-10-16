@@ -19,7 +19,7 @@ from admin_api.services.user_admin_service import (
 from core.deps import require_admin
 from core.db import get_db
 from core.models.user import User
-from core.services.auth_service import AuthError
+from admin_api.services import AdminError
 
 router = APIRouter(prefix="/api/admin/users", tags=["admin-users"])
 
@@ -48,7 +48,7 @@ def create_user_route(
     """管理端代建用户。"""
     try:
         user = create_user_service(db, admin, payload, request)
-    except AuthError as exc:
+    except AdminError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return {"id": user.id, "username": user.username, "role": user.role}
 
@@ -64,7 +64,7 @@ def update_user_route(
     """启用 / 封禁 / 调整角色。"""
     try:
         user = update_user(db, admin, user_id, payload, request)
-    except AuthError as exc:
+    except AdminError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return {"id": user.id, "username": user.username, "role": user.role, "status": user.status}
 
@@ -79,6 +79,6 @@ def delete_user_route(
     """删除用户及其全部练习数据（外键级联）。"""
     try:
         affected = remove_user(db, admin, user_id, request)
-    except AuthError as exc:
+    except AdminError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return {"deleted": True, "affected_rows": affected}

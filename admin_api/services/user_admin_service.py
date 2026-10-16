@@ -18,7 +18,7 @@ from admin_api.schemas.users import (
     AdminUserListPage,
 )
 from admin_api.schemas.auth import AdminUserOut
-from admin_api.services import audit_service
+from admin_api.services import AdminError, audit_service
 from core.models.chat import ChatMessage
 from core.constants import USER_STATUS_ACTIVE, USER_STATUS_BANNED
 from core.models.record import UserWordRecord
@@ -122,9 +122,9 @@ def create_user(
 ) -> User:
     """管理端代建用户。"""
     if get_user_by_username(db, payload.username):
-        raise AuthError("用户名已被注册", status_code=409)
+        raise AdminError("用户名已被注册", status_code=409)
     if len(payload.username.strip()) < 3:
-        raise AuthError("用户名至少 3 个字符")
+        raise AdminError("用户名至少 3 个字符")
 
     user = create_core_user(db, payload.username.strip(), payload.password)
     user.role = payload.role
@@ -153,9 +153,9 @@ def update_user(
     """启用 / 封禁 / 调整角色。"""
     target = db.get(User, user_id)
     if target is None:
-        raise AuthError("用户不存在", status_code=404)
+        raise AdminError("用户不存在", status_code=404)
     if payload.role is None and payload.status is None:
-        raise AuthError("没有需要更新的字段", status_code=400)
+        raise AdminError("没有需要更新的字段", status_code=400)
 
     # 先判「最后一个管理员」再判「不能对自己」：两条都指向同一件事——
     # 别把自己锁在门外——但 409 会告诉调用方真正的原因和解决办法。
@@ -170,10 +170,10 @@ def update_user(
         and payload.status != USER_STATUS_ACTIVE
     )
     if (would_demote or would_ban) and _admin_count(db) <= 1:
-        raise AuthError("系统必须保留至少一个管理员", status_code=409)
+        raise AdminError("系统必须保留至少一个管理员", status_code=409)
 
     if target.id == admin.id:
-        raise AuthError("不能对自己执行该操作", status_code=400)
+        raise AdminError("不能对自己执行该操作", status_code=400)
 
     changes: dict[str, str] = {}
     if payload.role is not None and payload.role != target.role:
@@ -220,11 +220,11 @@ def remove_user(
     """删除用户，返回连带删除的行数（词状态 + 练习会话 + 对话）。"""
     target = db.get(User, user_id)
     if target is None:
-        raise AuthError("用户不存在", status_code=404)
+        raise AdminError("用户不存在", status_code=404)
     if target.id == admin.id:
-        raise AuthError("不能删除自己", status_code=400)
+        raise AdminError("不能删除自己", status_code=400)
     if target.role == ADMIN_ROLE and _admin_count(db) <= 1:
-        raise AuthError("系统必须保留至少一个管理员", status_code=409)
+        raise AdminError("系统必须保留至少一个管理员", status_code=409)
 
     # 外键是 ON DELETE CASCADE，这里先算出影响面再删，审计才能如实记录
     def _count(model) -> int:

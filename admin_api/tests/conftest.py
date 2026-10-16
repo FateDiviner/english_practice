@@ -29,6 +29,13 @@ from main import app  # noqa: E402
 @pytest.fixture(scope="session", autouse=True)
 def _database() -> None:
     """建表；管理端与用户端共用 core.db，因此幂等补列在这里同样生效。"""
+    from core.db import engine
+
+    # 本套用例含删除词书与词条的破坏性操作，一旦连到真实库后果不可逆。
+    # 环境变量本应覆盖 .env，但这条断言让「意外打到正式库」当场炸掉而不是静默删数据。
+    assert "admin_test.db" in str(engine.url), (
+        f"测试连到了 {engine.url}，必须是临时库 admin_test.db"
+    )
     init_db()
 
 
