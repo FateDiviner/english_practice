@@ -27,7 +27,7 @@ english_practice/
 │   │   └── schemas/       Pydantic 请求 / 响应契约
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
 │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             2696 项自动化测试
+│   └── tests/             2702 项自动化测试
 └── frontend/
     └── src/
         ├── api/           HTTP 客户端与 SSE 流解析
@@ -84,7 +84,7 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 ## 测试与门禁
 
 ```bash
-# 后端：2697 项测试（默认跑临时 SQLite，零配置）
+# 后端：2702 项测试（默认跑临时 SQLite，零配置）
 cd backend && .venv/Scripts/python -m pytest
 
 # 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
@@ -93,8 +93,8 @@ RUN_MYSQL_TESTS=1 .venv/Scripts/python -m pytest
 # 真实大模型连通性冒烟（唯一会调用付费接口的脚本）
 .venv/Scripts/python -X utf8 -m scripts.ai_smoke
 
-# 前端：lint 0 error + 类型检查 + 构建
-cd frontend && npm run lint && npm run build
+# 前端：组件测试（jsdom）+ lint 0 error + 类型检查 + 构建
+cd frontend && npm test && npm run lint && npm run build
 ```
 
 `RUN_MYSQL_TESTS=1` 时，连接串由 `.env` 的 `DATABASE_URL` 自动把库名改写为
@@ -109,6 +109,11 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 红线（音标格式、词性前缀、中英混杂、重复词、例句必须体现目标词），以及全项目
 无 Emoji 自检。
 
+前端为 Vitest + Testing Library（jsdom），覆盖 AI 伴学的布局回归契约
+（消息区必须挂在可滚动的 flex 链路上、卡片自身裁剪溢出、气泡允许长文本断行）、
+键盘流（进入页面自动聚焦、Enter 发送、Shift+Enter 换行）、纠错区块渲染，
+以及滚动贴底判定的边界值。
+
 ## 设计取舍说明
 
 **发音字段 `speak`**：浏览器 `speechSynthesis` 只能朗读真实文本，因此默写线索中
@@ -122,6 +127,13 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 **PRD 内部冲突的处理**：数据库按 PRD 5.2 选 MySQL（AGENTS.md 与架构图写的 SQLite，
 以你确认的为准）；纠错区块标签按 AGENTS.md 第 7.2 节采用 `[语法指正]` / `[地道表达]`。
 
+## 版本记录
+
+| 版本 | 日期 | 主要变更 |
+| :--- | :--- | :--- |
+| v1.0.0 | 2026-10-15 | MVP：认证与游客迁移、词书中心、默写全键盘流、错题本、AI 伴学 SSE 流式与纠错区块 |
+| v1.1.0 | 2026-10-16 | 修复 AI 伴学对话框内容溢出（flex 约束下沉至 Card body 并裁剪）、长文本断行兜底、贴底跟随滚动、输入框自动聚焦、引入前端测试（12 项） |
+
 ## 里程碑状态
 
 | 阶段 | 内容 | 状态 |
@@ -134,7 +146,7 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 ### 已验证事实
 
 - MySQL 8.0 连接、建表、313 词导入与幂等重跑均正常（`dialect: mysql`）。
-- 整套 2697 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
+- 整套 2702 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
 - 真实模型端点为 OpenAI 兼容 SSE，逐字流式可用（实测分片间隔最大 0.26s），
   `[语法指正]` / `[地道表达]` 两个区块均能被正确解析。
 - 首字延迟受网络路径影响波动较大：受控 A/B 实测 **0.74 ~ 2.2s**（典型值约 1s），

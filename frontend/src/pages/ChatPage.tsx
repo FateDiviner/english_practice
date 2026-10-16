@@ -21,7 +21,18 @@ import {
 } from "@arco-design/web-react/icon";
 import type { ChatMessage, ChatPreset, FeedbackBlock } from "@/types";
 import { clearMessages, fetchMessages, streamChat } from "@/api/chat";
+import { isNearBottom } from "@/utils/scroll";
 import { toMessage } from "@/api/client";
+
+/**
+ * Arco TextArea 的 ref 句柄，结构等价于官方 RefTextAreaType。
+ * 本地声明可避免依赖组件库的深层导入路径。
+ */
+type TextAreaHandle = {
+  focus: () => void;
+  blur: () => void;
+  dom: HTMLTextAreaElement;
+};
 
 interface PresetItem {
   key: ChatPreset;
@@ -46,6 +57,7 @@ function FeedbackCard({ feedback }: { feedback: FeedbackBlock }) {
         borderRadius: "var(--border-radius-md)",
         background: "var(--color-primary-soft)",
         borderLeft: "3px solid var(--color-primary)",
+        overflowWrap: "anywhere",
       }}
     >
       {feedback.grammar && (
@@ -86,6 +98,9 @@ export default function ChatPage() {
 
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<TextAreaHandle>(null);
+  // 贴底标记：用户向上翻阅历史时不再强行拉到底，避免流式输出打断阅读
+  const pinnedRef = useRef(true);
   // 记住最近一次请求，供失败后一键重试
   const retryRef = useRef<{ content: string; preset: ChatPreset | null } | null>(null);
   const contextRef = useRef<string | null>(null);
@@ -113,11 +128,24 @@ export default function ChatPage() {
     return () => abortRef.current?.abort();
   }, [loadHistory]);
 
-  // 新内容到达时自动滚到底部
+  const handleScroll = useCallback(() => {
+    const node = listRef.current;
+    if (node) pinnedRef.current = isNearBottom(node);
+  }, []);
+
+  // 仅在贴底时跟随新内容滚动；向上翻阅历史则保持用户当前位置
   useEffect(() => {
+    if (!pinnedRef.current) return;
     const node = listRef.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [messages, streamText]);
+
+  // 键盘流：进入页面与流式结束后输入框重新聚焦，随时可直接打字
+  useEffect(() => {
+    if (streaming) return;
+    const raf = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(raf);
+  }, [streaming]);
 
   const send = useCallback(
     async (content: string, preset: ChatPreset | null) => {
@@ -130,6 +158,8 @@ export default function ChatPage() {
       setStreamFeedback(null);
       setStreaming(true);
       setInput("");
+      // 主动发送视为回到贴底，恢复自动跟随
+      pinnedRef.current = true;
 
       const optimistic: ChatMessage = {
         id: Date.now(),
@@ -265,14 +295,40 @@ export default function ChatPage() {
         ))}
       </Space>
 
+      {/*
+        Card 的 style 落在外层 .arco-card，而消息区与输入区实际挂在 .arco-card-body 下。
+        若只在外层开 flex，body 仍是普通 block，列表拿不到高度约束就不会滚动，
+        内容会撑破卡片固定高度溢出到对话框外，因此 flex 约束必须经 bodyStyle 下沉一层。
+      */}
       <Card
         className="card"
-        style={{ height: "min(56vh, 520px)", display: "flex", flexDirection: "column" }}
+        style={{
+          height: "clamp(320px, 56vh, 560px)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+        bodyStyle={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          padding: "12px 16px 14px",
+        }}
       >
         <div
           ref={listRef}
-          style={{ flex: 1, overflowY: "auto", padding: "4px 4px 12px" }}
+          data-testid="chat-list"
+          role="log"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "4px 4px 12px",
+          }}
           aria-live="polite"
+          onScroll={handleScroll}
         >
           {loading && (
             <Empty description="正在加载对话记录" style={{ marginTop: 60 }} />
@@ -290,6 +346,8 @@ export default function ChatPage() {
               key={`${message.role}-${message.id}`}
               style={{
                 display: "flex",
+                width: "100%",
+                minWidth: 0,
                 justifyContent:
                   message.role === "user" ? "flex-end" : "flex-start",
                 marginBottom: 12,
@@ -299,6 +357,7 @@ export default function ChatPage() {
                 data-testid={`chat-bubble-${message.role}`}
                 style={{
                   maxWidth: "78%",
+                  minWidth: 0,
                   padding: "10px 14px",
                   borderRadius: "var(--border-radius-md)",
                   background:
@@ -308,6 +367,7 @@ export default function ChatPage() {
                   color: message.role === "user" ? "#fff" : "var(--text-1)",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
+                  overflowWrap: "anywhere",
                 }}
               >
                 <div style={{ fontSize: 14, lineHeight: 1.65 }}>{message.content}</div>
@@ -319,15 +379,26 @@ export default function ChatPage() {
           ))}
 
           {streaming && (
-            <div data-testid="chat-streaming" style={{ display: "flex", justifyContent: "flex-start", marginBottom: 12 }}>
+            <div
+              data-testid="chat-streaming"
+              style={{
+                display: "flex",
+                width: "100%",
+                minWidth: 0,
+                justifyContent: "flex-start",
+                marginBottom: 12,
+              }}
+            >
               <div
                 style={{
                   maxWidth: "78%",
+                  minWidth: 0,
                   padding: "10px 14px",
                   borderRadius: "var(--border-radius-md)",
                   background: "var(--bg-subtle)",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
+                  overflowWrap: "anywhere",
                 }}
               >
                 {streamText || (
@@ -384,9 +455,11 @@ export default function ChatPage() {
             display: "flex",
             gap: 10,
             alignItems: "flex-end",
+            flexShrink: 0,
           }}
         >
           <Input.TextArea
+            ref={inputRef}
             className="focus-ring"
             value={input}
             autoSize={{ minRows: 1, maxRows: 4 }}
