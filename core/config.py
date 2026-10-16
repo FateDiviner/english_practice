@@ -7,14 +7,29 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BACKEND_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# 共享层同时被 backend 与 admin_api 使用，配置文件的相对基准不能再靠 __file__
+# 往上一级猜（那样从 core/ 看是仓库根，backend/.env 会被漏掉，静默回退到
+# SQLite 与默认密钥）。这里显式按优先级解析，两条路径都存在时以 backend 为准。
+ENV_FILE = next(
+    (
+        candidate
+        for candidate in (
+            PROJECT_ROOT / "backend" / ".env",
+            PROJECT_ROOT / ".env",
+        )
+        if candidate.exists()
+    ),
+    PROJECT_ROOT / "backend" / ".env",
+)
 
 
 class Settings(BaseSettings):
     """全局配置对象。"""
 
     model_config = SettingsConfigDict(
-        env_file=str(BACKEND_ROOT / ".env"),
+        env_file=str(ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -26,6 +41,9 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key-please-override"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7
+    # 管理员邀请码：留空则退化为「首个管理员」规则（系统里没有管理员时
+    # 才允许注册管理员），配置后建管理员必须提供该码
+    admin_invite_code: str = ""
 
     # AI 伴学（OpenAI 兼容协议）
     ai_base_url: str = ""

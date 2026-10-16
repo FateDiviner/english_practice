@@ -73,6 +73,11 @@ def _database() -> None:
     if _USE_EXTERNAL_DB:
         from core.db import Base, engine
 
+        # 硬断言：.env 一旦读不到会静默回退成 SQLite，「MySQL 上全绿」就是假的。
+        # 这类回退必须当场炸掉，而不是让整套外部库验证变成摆设。
+        assert engine.dialect.name == "mysql", (
+            f"RUN_MYSQL_TESTS=1 但实际连的是 {engine.dialect.name}，.env 未被读取"
+        )
         Base.metadata.drop_all(bind=engine)
         print("\n[测试库] 已清空外部数据库后重建表结构")
     init_db()
