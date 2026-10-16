@@ -69,7 +69,10 @@ def get_db() -> Generator[Session, None, None]:
 # 既有表里必须存在但可能缺失的列：create_all 只建新表、不给老表加列，
 # 本项目刻意不用 Alembic，因此新增字段一律在这里幂等补齐
 REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
-    "users": {"role": "VARCHAR(16) DEFAULT 'user' NOT NULL"},
+    "users": {
+        "role": "VARCHAR(16) DEFAULT 'user' NOT NULL",
+        "status": "VARCHAR(16) DEFAULT 'active' NOT NULL",
+    },
     "wordbooks": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
     "words": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
 }

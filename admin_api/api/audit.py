@@ -1,4 +1,4 @@
-"""管理端审计日志查询路由。"""
+"""管理端审计日志查询路由（只读）。"""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_admin
+from admin_api.schemas.audit import AuditLogOut, AuditLogPage
 from core.db import get_db
+from core.deps import require_admin
 from core.models.audit import AuditLog
 from core.models.user import User
-from app.schemas.audit import AuditLogOut, AuditLogPage
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin-audit"])
 
 
 @router.get("/audit-logs", response_model=AuditLogPage)
@@ -24,7 +24,7 @@ def list_audit_logs(
     _admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AuditLogPage:
-    """分页查询审计日志，按时间倒序。"""
+    """分页查询审计日志，按时间倒序。应用层不提供任何修改或删除接口。"""
     filters = []
     if action:
         filters.append(AuditLog.action == action)
@@ -32,7 +32,9 @@ def list_audit_logs(
         filters.append(AuditLog.actor_id == actor_id)
 
     total = db.scalar(
-        select(func.count(AuditLog.id)).where(*filters) if filters else select(func.count(AuditLog.id))
+        select(func.count(AuditLog.id)).where(*filters)
+        if filters
+        else select(func.count(AuditLog.id))
     )
     rows = db.scalars(
         select(AuditLog)

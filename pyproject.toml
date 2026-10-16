@@ -8,6 +8,7 @@ version = "1.6.0"
 description = "英语练习平台共享核心层：数据模型、连接、配置与账号校验"
 requires-python = ">=3.11"
 dependencies = [
+  "fastapi>=0.115",
   "sqlalchemy>=2.0",
   "pydantic>=2.0",
   "pydantic-settings>=2.0",

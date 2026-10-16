@@ -21,6 +21,8 @@ class User(Base):
     is_guest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # user: 普通用户 / admin: 管理端管理员。游客永远是 user
     role: Mapped[str] = mapped_column(String(16), default="user", index=True, nullable=False)
+    # active: 正常 / banned: 封禁（登录与已有令牌一律拒绝）
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True, nullable=False)
     active_wordbook_id: Mapped[int | None] = mapped_column(index=True, nullable=True)
     consecutive_days: Mapped[int] = mapped_column(default=0, nullable=False)
     last_checkin_date: Mapped[str | None] = mapped_column(String(10), nullable=True)

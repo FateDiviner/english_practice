@@ -5,7 +5,8 @@
 
 用法：
     cd backend
-    python -m scripts.create_admin <用户名>
+    cd admin_api
+    ../backend/.venv/Scripts/python -m scripts.create_admin <用户名>
 """
 
 from __future__ import annotations

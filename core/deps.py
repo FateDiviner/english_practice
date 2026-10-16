@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from core.db import get_db
+from core.constants import USER_STATUS_ACTIVE
 from core.models.user import User
 from core.security import decode_access_token
 
@@ -44,6 +45,12 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="账号不存在或已被注销",
+        )
+    # 封禁即时生效：JWT 本身无状态，但每次请求都查库，状态一改旧令牌立刻作废
+    if user.status != USER_STATUS_ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="账号已被封禁",
         )
     return user
 

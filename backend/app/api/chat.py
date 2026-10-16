@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.ai.client import AIError, stream_chat
 from app.ai.corrections import feedback_from_json, feedback_to_json, parse_feedback
 from app.ai.prompts import build_messages
-from app.api.deps import get_current_user
+from core.deps import get_current_user
 from core.db import SessionLocal, get_db
 from core.models.chat import ChatMessage
 from core.models.user import User

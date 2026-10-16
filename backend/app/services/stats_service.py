@@ -13,17 +13,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.models.record import UserWordRecord
+from core.services.streak import recompute_streak, today_utc
 from core.models.session import PracticeSessionRecord
 from core.models.user import User
 from core.models.wordbook import WordBook
 
 # 看板默认展示的天数
 DEFAULT_TREND_DAYS = 7
-
-
-def today_utc() -> date:
-    """全项目统一的日历口径：UTC。"""
-    return datetime.now(timezone.utc).date()
 
 
 def mark_checkin(db: Session, user_id: int) -> None:
@@ -69,32 +65,6 @@ def record_session(
     )
     db.add(record)
     return record
-
-
-def recompute_streak(db: Session, user_id: int) -> tuple[int, date | None]:
-    """从练习会话反推连续天数，返回 (天数, 最近练习日)。
-
-    游客转正合并两侧数据后必须重算：直接取两个计数器的较大值会把
-    已经过期的连续天数也一起继承下来。
-    """
-    days = [
-        row[0]
-        for row in db.execute(
-            select(PracticeSessionRecord.practiced_on)
-            .where(PracticeSessionRecord.user_id == user_id)
-            .distinct()
-            .order_by(PracticeSessionRecord.practiced_on.desc())
-        ).all()
-    ]
-    if not days:
-        return 0, None
-
-    streak = 1
-    for previous, current in zip(days, days[1:]):
-        if (previous - current).days != 1:
-            break
-        streak += 1
-    return streak, days[0]
 
 
 def build_overview(db: Session, user_id: int, days: int = DEFAULT_TREND_DAYS) -> dict:

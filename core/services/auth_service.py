@@ -11,8 +11,9 @@ from core.models.chat import ChatMessage
 from core.models.record import UserWordRecord
 from core.models.session import PracticeSessionRecord
 from core.models.user import User
+from core.constants import USER_STATUS_ACTIVE
 from core.security import create_access_token, hash_password, verify_password
-from app.services import stats_service
+from core.services.streak import recompute_streak
 
 GUEST_PREFIX = "guest_"
 GUEST_PASSWORD = "guest-session-only"
@@ -62,6 +63,9 @@ def login(db: Session, username: str, password: str, guest_id: int | None = None
     user = get_user_by_username(db, username.strip())
     if user is None or user.is_guest or not verify_password(password, user.password_hash):
         raise AuthError("用户名或密码不正确", status_code=401)
+    # 封禁必须挡在登录这一步：否则被封禁者仍能换新令牌绕过 403
+    if user.status != USER_STATUS_ACTIVE:
+        raise AuthError("账号已被封禁", status_code=403)
 
     migrated = False
     if guest_id is not None and guest_id != user.id:
@@ -137,7 +141,7 @@ def migrate_guest_data(db: Session, guest_id: int, target: User) -> bool:
     # 连续打卡不能直接取两个计数器的较大值：那样会把其中一方已经断签的
     # 旧天数一起继承下来。练习会话已合并，直接按合并后的日期反推。
     db.flush()
-    streak, last_on = stats_service.recompute_streak(db, target.id)
+    streak, last_on = recompute_streak(db, target.id)
     target.consecutive_days = streak
     target.last_checkin_date = last_on.isoformat() if last_on else None
 

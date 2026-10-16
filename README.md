@@ -18,7 +18,11 @@
 english_practice/
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
-├── backend/
+├── core/               共享核心层（仓库根 pip install -e . 安装）
+│   ├── models/          全部 ORM 模型，两端共用同一套表结构
+│   ├── services/        账号体系、数据质量校验、连续打卡推导
+│   └── db / config / security / constants / deps
+├── backend/             用户端 API（独立进程）
 │   ├── app/
 │   │   ├── api/           路由控制器（入参校验 + 响应格式化）
 │   │   ├── services/      业务逻辑（遗忘曲线调度、练习结算、认证迁移、看板统计）
@@ -27,7 +31,12 @@ english_practice/
 │   │   └── schemas/       Pydantic 请求 / 响应契约
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
 │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             3167 项自动化测试
+│   └── tests/             3170 项自动化测试
+├── admin_api/          管理端 API（独立进程，端口 8100）
+│   ├── api/             管理员认证、用户管理、审计
+│   ├── services/        封禁 / 删除等管理逻辑，与用户端业务互不混用
+│   ├── scripts/         create_admin CLI
+│   └── tests/           管理端测试
 ├── shared/design/    设计 Token（用户端与管理端共用的唯一来源）
 ├── admin/            管理端：独立 Vite 工程，端口 5174，强制 require_admin
 └── frontend/
@@ -70,8 +79,15 @@ cd admin
 npm install
 npm run dev                # http://localhost:5174，/api 已代理至 :8000
 
-# 首个管理员必须走 CLI 创建，不提供网页注册入口
-cd ../backend && python -m scripts.create_admin <用户名>
+# 3. 管理端后端（与用户端分进程，共用 core 的同一套表结构）
+cd admin_api
+../backend/.venv/Scripts/python -m uvicorn admin_api.main:app --app-dir .. --port 8100
+
+# 管理员注册走 /api/admin/auth/register：
+#   配置了 ADMIN_INVITE_CODE  -> 必须带正确邀请码
+#   未配置邀请码             -> 只有系统里一个管理员都没有时才允许注册第一个
+# 忘记密码时的最后出路（不经过注册口）：
+../backend/.venv/Scripts/python -m scripts.create_admin <用户名>
 ```
 
 ## 环境变量 (`backend/.env`)
@@ -98,7 +114,7 @@ cd ../backend && python -m scripts.create_admin <用户名>
 ## 测试与门禁
 
 ```bash
-# 后端：3167 项测试（默认跑临时 SQLite，零配置）
+# 后端：3170 项测试（默认跑临时 SQLite，零配置）
 cd backend && .venv/Scripts/python -m pytest
 
 # 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
@@ -106,6 +122,9 @@ RUN_MYSQL_TESTS=1 .venv/Scripts/python -m pytest
 
 # 真实大模型连通性冒烟（唯一会调用付费接口的脚本）
 .venv/Scripts/python -X utf8 -m scripts.ai_smoke
+
+# 管理端后端：注册规则、权限边界、封禁与审计
+cd admin_api && ../backend/.venv/Scripts/python -m pytest
 
 # 前端：组件测试（jsdom）+ lint 0 error + 类型检查 + 构建
 cd frontend && npm test && npm run lint && npm run build
@@ -193,7 +212,9 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 ### 已验证事实
 
 - MySQL 8.0 连接、建表、313 词导入与幂等重跑均正常（`dialect: mysql`）。
-- 整套 3167 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
+- 整套 3170 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致通过，且测试基座
+会断言 RUN_MYSQL_TESTS=1 时确实连的是 MySQL——防止 .env 读不到时静默回退成
+SQLite，把「外部库上全绿」变成假象。管理端另有 39 项独立测试。
 - 真实模型端点为 OpenAI 兼容 SSE，逐字流式可用（实测分片间隔最大 0.26s），
   `[语法指正]` / `[地道表达]` 两个区块均能被正确解析。
 - 首字延迟受网络路径影响波动较大：受控 A/B 实测 **0.74 ~ 2.2s**（典型值约 1s），

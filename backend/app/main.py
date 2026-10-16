@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, chat, practice, stats, user, wordbooks
-from app.api.admin import audit_router
 from core.config import get_settings
 from core.db import init_db
 
@@ -56,5 +55,4 @@ app.include_router(wordbooks.router)
 app.include_router(practice.router)
 app.include_router(stats.router)
 app.include_router(user.router)
-app.include_router(audit_router)
 app.include_router(chat.router)

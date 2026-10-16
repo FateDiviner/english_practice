@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from core.deps import get_current_user
 from core.db import get_db
 from core.models.user import User
 from app.schemas.backup import BACKUP_FORMAT, BACKUP_VERSION, BackupFile, ImportResult
