@@ -173,7 +173,7 @@ export default function LearningBoard({ overview }: { overview: StatsOverview })
             />
             <Statistic
               value={totals.mastered}
-              suffix={`/ ${totals.practiced}`}
+              suffix={` / ${totals.practiced}`}
               title="已掌握"
               styleValue={{ fontSize: 22, fontWeight: 600, color: "var(--text-1)" }}
             />
