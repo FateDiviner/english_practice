@@ -1,0 +1,78 @@
+/* ==========================================================================
+   设计 Token（唯一来源）
+   用户端 frontend 与管理端 admin 都从这里引用，改动只需一处。
+   色彩一律经变量引用，严禁散落硬编码 HEX。
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* 表面与文字 */
+  --bg-page: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f0f1f3;
+  --text-1: #1d2129;
+  --text-2: #4e5969;
+  --text-3: #86909c;
+  --border-color: #e5e6eb;
+  --border-strong: #c9cdd4;
+
+  /* 语义色 */
+  --color-success: #00b42a;
+  --color-success-soft: rgba(0, 180, 42, 0.12);
+  --color-danger: #f53f3f;
+  --color-danger-soft: rgba(245, 63, 63, 0.12);
+  --color-warning: #ff7d00;
+  --color-warning-soft: rgba(255, 125, 0, 0.12);
+  --color-primary: #165dff;
+  --color-primary-soft: rgba(22, 93, 255, 0.1);
+  --color-focus: rgba(22, 93, 255, 0.45);
+
+  /* 圆角与阴影 */
+  --radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 6px 24px rgba(0, 0, 0, 0.12);
+
+  /* 字阶 */
+  --font-word: 30px;
+  --font-phonetic: 19px;
+  --font-body: 15px;
+  --font-caption: 13px;
+
+  /* IPA 需要覆盖扩展音标字符的字体族 */
+  --font-ipa: "Charis SIL", "Doulos SIL", "Gentium Plus", "Segoe UI Symbol",
+    "Segoe UI", "Noto Sans", system-ui, sans-serif;
+
+  --duration-fast: 160ms;
+  --duration-mid: 280ms;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-page: #17171a;
+  --bg-card: #232326;
+  --bg-elevated: #2a2a2e;
+  --bg-subtle: #2e2e33;
+  --text-1: #e5e6eb;
+  --text-2: #a9aeb8;
+  --text-3: #6b7280;
+  --border-color: #36363c;
+  --border-strong: #4a4a52;
+
+  --color-success: #23c343;
+  --color-success-soft: rgba(35, 195, 67, 0.16);
+  --color-danger: #f76965;
+  --color-danger-soft: rgba(247, 105, 101, 0.16);
+  --color-warning: #ff9a2e;
+  --color-warning-soft: rgba(255, 154, 46, 0.16);
+  --color-primary: #3c7eff;
+  --color-primary-soft: rgba(60, 126, 255, 0.16);
+  --color-focus: rgba(60, 126, 255, 0.5);
+
+  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 6px 24px rgba(0, 0, 0, 0.5);
+}

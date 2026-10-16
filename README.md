@@ -28,6 +28,8 @@ english_practice/
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
 │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
 │   └── tests/             2779 项自动化测试
+├── shared/design/    设计 Token（用户端与管理端共用的唯一来源）
+├── admin/            管理端：独立 Vite 工程，端口 5174，强制 require_admin
 └── frontend/
     └── src/
         ├── api/           HTTP 客户端与 SSE 流解析
@@ -35,7 +37,7 @@ english_practice/
         ├── hooks/         发音、键盘流契约
         ├── components/    学习看板等复合区块
         ├── pages/         登录、词书中心、默写、错题本、AI 伴学
-        └── styles/        设计 Token（深浅色双套）
+        └── styles/        引用 shared/design 的 Token 与全局样式
 ```
 
 ## 快速开始
