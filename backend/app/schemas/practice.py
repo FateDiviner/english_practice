@@ -35,8 +35,8 @@ class PracticeStartRequest(BaseModel):
 
     wordbook_id: int
     size: int = Field(default=10, ge=1, le=50, description="每组词数")
-    # wrong_book: 错题专项重练
-    mode: str = Field(default="normal", pattern="^(normal|wrong_book)$")
+    # wrong_book: 错题专项重练 / review: 今日到期词复习
+    mode: str = Field(default="normal", pattern="^(normal|wrong_book|review)$")
 
 
 class PracticeStartResponse(BaseModel):
@@ -137,3 +137,34 @@ class WrongBookResponse(BaseModel):
 
     total: int
     items: list[WrongBookItem]
+
+
+class ReviewPreviewItem(BaseModel):
+    """今日待复习队列的预览条目。
+
+    刻意不返回 word 拼写：预览一眼扫过就等于背过，
+    会与"例句挖空防泄漏"的设计初衷冲突。
+    """
+
+    word_id: int
+    translation: str
+    phonetic: str
+    # learning / mastered / wrong
+    status: str
+    wrong_count: int
+    next_review_at: str | None = None
+
+
+class ReviewQueueResponse(BaseModel):
+    """某词书今日的复习压力统计。
+
+    total = overdue + due_today，即词书中心入口显示的 N；
+    upcoming_7d 仅作提示，不计入 N。
+    """
+
+    wordbook_id: int
+    total: int
+    overdue: int
+    due_today: int
+    upcoming_7d: int
+    preview: list[ReviewPreviewItem] = Field(default_factory=list)

@@ -14,12 +14,13 @@ from app.schemas.practice import (
     HintResponse,
     PracticeStartRequest,
     PracticeStartResponse,
+    ReviewQueueResponse,
     SettlementResponse,
     SubmitRequest,
     SubmitResponse,
     WrongBookResponse,
 )
-from app.services import practice_service
+from app.services import practice_service, scheduler
 
 router = APIRouter(prefix="/api/practice", tags=["practice"])
 
@@ -41,7 +42,13 @@ def start(payload: PracticeStartRequest, user: User = Depends(get_current_user),
             db, user.id, payload.wordbook_id, payload.size, payload.mode
         )
     except ValueError as exc:
-        detail = "错题本为空，先去默写几组吧" if str(exc) == "wrong_book" else "该词书暂无单词"
+        reason = str(exc)
+        if reason == "wrong_book":
+            detail = "错题本为空，先去默写几组吧"
+        elif reason == "review":
+            detail = "暂无到期词，今天的复习任务已完成"
+        else:
+            detail = "该词书暂无单词"
         raise HTTPException(status_code=400, detail=detail) from exc
 
 
@@ -86,6 +93,19 @@ def finish(session_id: str, user: User = Depends(get_current_user),
         raise HTTPException(status_code=404, detail="练习会话不存在或已过期") from exc
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail="无权访问该练习会话") from exc
+
+
+@router.get("/review-queue", response_model=ReviewQueueResponse)
+def review_queue(
+    wordbook_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ReviewQueueResponse:
+    """统计某词书今日待复习的词，供词书中心入口展示。"""
+    _ensure_book(db, wordbook_id)
+    return ReviewQueueResponse(
+        **scheduler.build_review_queue(db, user.id, wordbook_id)
+    )
 
 
 @router.get("/wrong-book", response_model=WrongBookResponse)

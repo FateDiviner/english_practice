@@ -155,7 +155,8 @@ def start_session(
     """开启一组练习，选词并一次性下发全部线索。"""
     words = scheduler.select_session_words(db, user_id, wordbook_id, size, mode)
     if not words:
-        raise ValueError("wrong_book" if mode == "wrong_book" else "empty")
+        reason = {"wrong_book": "wrong_book", "review": "review"}.get(mode, "empty")
+        raise ValueError(reason)
 
     session = PracticeSession(
         id=uuid.uuid4().hex,

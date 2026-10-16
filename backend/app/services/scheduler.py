@@ -27,6 +27,9 @@ PENALTY_STEPS = 2
 # 进入错题本后，需累计答对这么多次才移出，避免订正一次就从错题本消失
 WRONG_BOOK_RELEASE = 2
 
+# next_review_at 为空视为无限期逾期，用一个可排序的大数参与优先级比较
+_MAX_LATENESS = 1.0e12
+
 STATUS_LEARNING = "learning"
 STATUS_MASTERED = "mastered"
 STATUS_WRONG = "wrong"
@@ -108,6 +111,47 @@ def _priority(record: UserWordRecord | None, word: Word, now: datetime) -> tuple
     return (5, 0, word.sequence)
 
 
+def _end_of_day(now: datetime) -> datetime:
+    """取当天最后一刻。
+
+    口径与 _utcnow() 保持一致（均为 UTC），避免同一天存在两种边界。
+    """
+    return now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+
+def _due_bucket(
+    record: UserWordRecord, now: datetime, today_end: datetime, horizon: datetime
+) -> str | None:
+    """把一条记录归入复习分桶：overdue / due_today / upcoming_7d / None。"""
+    due_at = record.next_review_at
+    if due_at is None or due_at <= now:
+        return "overdue"
+    if due_at <= today_end:
+        return "due_today"
+    if due_at <= horizon:
+        return "upcoming_7d"
+    return None
+
+
+def _review_priority(record: UserWordRecord, now: datetime) -> tuple:
+    """生成复习选词优先级（元组越小越优先）。
+
+    排序次序：逾期越久 > 错得越多 > 答对越少。
+    """
+    overdue = record.next_review_at is None or record.next_review_at <= now
+    lateness = (
+        (now - record.next_review_at).total_seconds()
+        if record.next_review_at is not None
+        else _MAX_LATENESS
+    )
+    return (
+        0 if overdue else 1,
+        -lateness,
+        -(record.wrong_count or 0),
+        -(record.right_count or 0),
+    )
+
+
 def select_session_words(
     db: Session,
     user_id: int,
@@ -149,6 +193,20 @@ def select_session_words(
             )
         )
         return wrong_words[:size]
+
+    if mode == "review":
+        today_end = _end_of_day(now)
+        horizon = today_end + timedelta(days=7)
+        due_words = [
+            word
+            for word in words
+            if (rec := records.get(word.id)) is not None
+            and _due_bucket(rec, now, today_end, horizon) in {"overdue", "due_today"}
+        ]
+        # 到期词不足 size 时一律不补新词：复习组一旦混入新词，
+        # 词书中心那句"今日待复习 N"就失真了
+        due_words.sort(key=lambda w: _review_priority(records[w.id], now))
+        return due_words[:size]
 
     ranked = sorted(words, key=lambda w: _priority(records.get(w.id), w, now))
     return ranked[:size]
@@ -196,4 +254,67 @@ def compute_progress(db: Session, user_id: int, wordbook_id: int) -> dict[str, i
         "wrong": by_status[STATUS_WRONG],
         "untouched": total_words - len(records),
         "accuracy": round(right_total / attempt_total * 100, 1) if attempt_total else 0.0,
+    }
+
+
+def build_review_queue(
+    db: Session, user_id: int, wordbook_id: int, preview_limit: int = 10
+) -> dict:
+    """统计某词书今日的复习压力，并给出不含拼写的预览。
+
+    预览刻意不返回 word 字段：列表一眼扫过就等于背过拼写，
+    会与"例句挖空防泄漏"的设计初衷冲突。
+    """
+    now = _utcnow()
+    today_end = _end_of_day(now)
+    horizon = today_end + timedelta(days=7)
+
+    words = list(
+        db.scalars(select(Word).where(Word.wordbook_id == wordbook_id)).all()
+    )
+    records: dict[int, UserWordRecord] = {}
+    if words:
+        records = {
+            record.word_id: record
+            for record in db.scalars(
+                select(UserWordRecord).where(
+                    UserWordRecord.user_id == user_id,
+                    UserWordRecord.word_id.in_([word.id for word in words]),
+                )
+            ).all()
+        }
+
+    counts = {"overdue": 0, "due_today": 0, "upcoming_7d": 0}
+    due_items: list[tuple[UserWordRecord, Word]] = []
+    for word in words:
+        record = records.get(word.id)
+        if record is None:
+            continue
+        bucket = _due_bucket(record, now, today_end, horizon)
+        if bucket is None:
+            continue
+        counts[bucket] += 1
+        if bucket in {"overdue", "due_today"}:
+            due_items.append((record, word))
+
+    due_items.sort(key=lambda item: _review_priority(item[0], now))
+    return {
+        "wordbook_id": wordbook_id,
+        "total": counts["overdue"] + counts["due_today"],
+        "overdue": counts["overdue"],
+        "due_today": counts["due_today"],
+        "upcoming_7d": counts["upcoming_7d"],
+        "preview": [
+            {
+                "word_id": word.id,
+                "translation": word.translation,
+                "phonetic": word.phonetic,
+                "status": record.status,
+                "wrong_count": record.wrong_count,
+                "next_review_at": (
+                    record.next_review_at.isoformat() if record.next_review_at else None
+                ),
+            }
+            for record, word in due_items[:preview_limit]
+        ],
     }

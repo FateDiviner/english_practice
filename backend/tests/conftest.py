@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
 _USE_EXTERNAL_DB = os.environ.pop("RUN_MYSQL_TESTS", "") == "1"
@@ -121,7 +122,7 @@ def client() -> TestClient:
 @pytest.fixture()
 def auth_client(client: TestClient) -> TestClient:
     """已完成注册登录的客户端，附带合法 Authorization 头。"""
-    username = f"tester_{os.getpid()}_{id(client)}"
+    username = f"tester_{os.getpid()}_{uuid.uuid4().hex[:12]}"
     response = client.post(
         "/api/auth/register",
         json={"username": username, "password": "secret123"},
