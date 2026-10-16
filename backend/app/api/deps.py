@@ -46,3 +46,15 @@ def get_current_user(
             detail="账号不存在或已被注销",
         )
     return user
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """管理端专用：仅管理员可通过。
+
+    权限判定只在后端，前端隐藏入口不算权限；游客即使拿到令牌也永远是 403。
+    """
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
+    return user

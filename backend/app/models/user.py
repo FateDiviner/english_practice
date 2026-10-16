@@ -19,6 +19,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_guest: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # user: 普通用户 / admin: 管理端管理员。游客永远是 user
+    role: Mapped[str] = mapped_column(String(16), default="user", index=True, nullable=False)
     active_wordbook_id: Mapped[int | None] = mapped_column(index=True, nullable=True)
     consecutive_days: Mapped[int] = mapped_column(default=0, nullable=False)
     last_checkin_date: Mapped[str | None] = mapped_column(String(10), nullable=True)

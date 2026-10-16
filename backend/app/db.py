@@ -38,6 +38,18 @@ if not settings.database_url.startswith("sqlite"):
         cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
         cursor.close()
 
+else:
+
+    @event.listens_for(engine, "connect")
+    def _enable_sqlite_foreign_keys(dbapi_connection, _record) -> None:  # pragma: no cover
+        """SQLite 默认不强制外键，ON DELETE CASCADE / SET NULL 会静默失效。
+
+        MySQL 一直强制执行，两边行为必须一致，否则测试通过的行为在线上并不存在。
+        """
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 

@@ -27,6 +27,8 @@ class UserInfo(BaseModel):
     id: int
     username: str
     is_guest: bool
+    # user / admin
+    role: str = "user"
     active_wordbook_id: int | None = None
     consecutive_days: int = 0
     created_at: datetime

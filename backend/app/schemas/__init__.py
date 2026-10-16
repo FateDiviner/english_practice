@@ -6,6 +6,7 @@ from app.schemas.auth import (
     RegisterRequest,
     UserInfo,
 )
+from app.schemas.audit import AuditLogOut, AuditLogPage
 from app.schemas.backup import (
     BACKUP_FORMAT,
     BACKUP_VERSION,
@@ -50,6 +51,8 @@ __all__ = [
     "ChatSendRequest",
     "MessageOut",
     "FeedbackBlock",
+    "AuditLogOut",
+    "AuditLogPage",
     "BackupFile",
     "ImportResult",
     "DailyStat",
