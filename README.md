@@ -27,7 +27,7 @@ english_practice/
 │   │   └── schemas/       Pydantic 请求 / 响应契约
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
 │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             2779 项自动化测试
+│   └── tests/             3167 项自动化测试
 ├── shared/design/    设计 Token（用户端与管理端共用的唯一来源）
 ├── admin/            管理端：独立 Vite 工程，端口 5174，强制 require_admin
 └── frontend/
@@ -63,6 +63,17 @@ npm install
 npm run dev                # http://localhost:5173，/api 已代理至 :8000
 ```
 
+### 3. 管理端（可选）
+
+```bash
+cd admin
+npm install
+npm run dev                # http://localhost:5174，/api 已代理至 :8000
+
+# 首个管理员必须走 CLI 创建，不提供网页注册入口
+cd ../backend && python -m scripts.create_admin <用户名>
+```
+
 ## 环境变量 (`backend/.env`)
 
 | 变量 | 说明 |
@@ -87,7 +98,7 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 ## 测试与门禁
 
 ```bash
-# 后端：2779 项测试（默认跑临时 SQLite，零配置）
+# 后端：3167 项测试（默认跑临时 SQLite，零配置）
 cd backend && .venv/Scripts/python -m pytest
 
 # 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
@@ -168,6 +179,7 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 | v1.3.0 | 2026-10-16 | 学习看板与连续打卡：新增 `practice_sessions` 落库、`GET /api/stats/overview`，词书中心展示连续天数、今日进度与近 7 天趋势 |
 | v1.4.0 | 2026-10-16 | 学习数据防丢：游客身份常驻风险提示，新增 `GET /api/user/export` 与 `POST /api/user/import`，备份可在账号之间搬运 |
 | v1.5.0 | 2026-10-16 | AI 伴学闭环：默写答错与错题本「AI 讲解」自动带上讲解对象，伴学页展示并可移除；历史按日分组 |
+| v1.6.0 | 2026-10-16 | 管理端地基：role 权限模型与 require_admin、审计日志只增不改、词书与词条软删除、数据质量校验器下沉、独立 admin 工程 |
 
 ## 里程碑状态
 
@@ -181,7 +193,7 @@ pytest 一律强制走 Mock 流式（不读 `.env` 的真实密钥），以保�
 ### 已验证事实
 
 - MySQL 8.0 连接、建表、313 词导入与幂等重跑均正常（`dialect: mysql`）。
-- 整套 2779 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
+- 整套 3167 项测试在 **MySQL** 与 **SQLite** 两种后端上结果一致，全部通过。
 - 真实模型端点为 OpenAI 兼容 SSE，逐字流式可用（实测分片间隔最大 0.26s），
   `[语法指正]` / `[地道表达]` 两个区块均能被正确解析。
 - 首字延迟受网络路径影响波动较大：受控 A/B 实测 **0.74 ~ 2.2s**（典型值约 1s），
