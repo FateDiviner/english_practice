@@ -201,6 +201,71 @@ export interface StatsOverview {
   totals: LearningTotals;
 }
 
+/** 备份中的单词记忆状态，用 wordbook.code + word 定位 */
+export interface BackupWordRecord {
+  wordbook: string;
+  word: string;
+  status: "learning" | "mastered" | "wrong";
+  wrong_count: number;
+  right_count: number;
+  ease_stage: number;
+  last_practiced: string | null;
+  next_review_at: string | null;
+}
+
+/** 备份中的练习结算记录 */
+export interface BackupSession {
+  wordbook: string;
+  mode: "normal" | "wrong_book" | "review";
+  total: number;
+  correct: number;
+  wrong: number;
+  duration_ms: number;
+  practiced_on: string;
+}
+
+/** 备份中的对话记录，feedback 原样为 JSON 字符串 */
+export interface BackupMessage {
+  role: string;
+  content: string;
+  feedback: string | null;
+  created_at: string;
+}
+
+/** 导出文件的统计摘要 */
+export interface BackupSummary {
+  words: number;
+  sessions: number;
+  messages: number;
+  consecutive_days: number;
+}
+
+/** 一份完整的学习数据备份，可在账号之间搬运 */
+export interface BackupFile {
+  format: string;
+  version: number;
+  exported_at: string;
+  summary: BackupSummary;
+  word_records: BackupWordRecord[];
+  sessions: BackupSession[];
+  chat_messages: BackupMessage[];
+  consecutive_days: number;
+  last_checkin_date: string | null;
+  active_wordbook: string | null;
+}
+
+/** 导入结果统计 */
+export interface ImportResult {
+  records_new: number;
+  records_merged: number;
+  sessions_added: number;
+  sessions_skipped: number;
+  messages_added: number;
+  messages_skipped: number;
+  words_unmatched: number;
+  consecutive_days: number;
+}
+
 /** 实时纠错结构化区块 */
 export interface FeedbackBlock {
   grammar: string;
