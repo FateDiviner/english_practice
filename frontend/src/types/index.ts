@@ -161,6 +161,46 @@ export interface ReviewQueue {
   preview: ReviewPreviewItem[];
 }
 
+/** 单日练习统计 */
+export interface DailyStat {
+  date: string;
+  sessions: number;
+  words: number;
+  correct: number;
+  accuracy: number;
+}
+
+/** 最近一次练习记录 */
+export interface RecentSession {
+  date: string;
+  wordbook_id: number;
+  wordbook_title: string;
+  mode: "normal" | "wrong_book" | "review";
+  total: number;
+  correct: number;
+  accuracy: number;
+  duration_ms: number;
+}
+
+/** 累计学习状态（跨全部词书） */
+export interface LearningTotals {
+  mastered: number;
+  learning: number;
+  wrong: number;
+  practiced: number;
+}
+
+/** 学习看板概览 */
+export interface StatsOverview {
+  consecutive_days: number;
+  checked_in_today: boolean;
+  today: DailyStat;
+  /** 含今天在内按日升序，未练习日期补零 */
+  daily: DailyStat[];
+  recent: RecentSession[];
+  totals: LearningTotals;
+}
+
 /** 实时纠错结构化区块 */
 export interface FeedbackBlock {
   grammar: string;

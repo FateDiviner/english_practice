@@ -13,9 +13,11 @@ import {
   Typography,
 } from "@arco-design/web-react";
 import { IconHistory, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
-import type { ReviewQueue, WordBook, WordBookProgress } from "@/types";
+import type { ReviewQueue, StatsOverview, WordBook, WordBookProgress } from "@/types";
 import { activateWordbook, fetchProgress, fetchWordbooks } from "@/api/wordbooks";
 import { fetchReviewQueue } from "@/api/practice";
+import { fetchOverview } from "@/api/stats";
+import LearningBoard from "@/components/LearningBoard";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
 import { usePracticeStore, type PracticeMode } from "@/stores/practice";
@@ -35,6 +37,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [review, setReview] = useState<ReviewQueue | null>(null);
+  const [stats, setStats] = useState<StatsOverview | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,21 @@ export default function DashboardPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 学习看板为跨词书全局统计，只需在进入页面时拉取一次
+  useEffect(() => {
+    let cancelled = false;
+    void fetchOverview()
+      .then((overview) => {
+        if (!cancelled) setStats(overview);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) Message.error({ content: toMessage(error) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 今日待复习队列按激活词书统计，切换词书后重新拉取
   useEffect(() => {
@@ -105,6 +123,8 @@ export default function DashboardPage() {
 
   return (
     <div className="anim-fade-up">
+      {stats && <LearningBoard overview={stats} />}
+
       <div
         style={{
           display: "flex",

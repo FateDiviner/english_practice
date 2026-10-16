@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "@/pages/DashboardPage";
 import { fetchProgress, fetchWordbooks } from "@/api/wordbooks";
 import { fetchReviewQueue, startPractice } from "@/api/practice";
-import type { ReviewQueue, WordBook, WordBookProgress } from "@/types";
+import { fetchOverview } from "@/api/stats";
+import type { ReviewQueue, StatsOverview, WordBook, WordBookProgress } from "@/types";
 
 vi.mock("@/api/wordbooks", () => ({
   fetchWordbooks: vi.fn(),
@@ -21,10 +22,15 @@ vi.mock("@/api/practice", () => ({
   finishPractice: vi.fn(),
 }));
 
+vi.mock("@/api/stats", () => ({
+  fetchOverview: vi.fn(),
+}));
+
 const mockedFetchWordbooks = vi.mocked(fetchWordbooks);
 const mockedFetchProgress = vi.mocked(fetchProgress);
 const mockedFetchReviewQueue = vi.mocked(fetchReviewQueue);
 const mockedStartPractice = vi.mocked(startPractice);
+const mockedFetchOverview = vi.mocked(fetchOverview);
 
 const BOOK: WordBook = {
   id: 1,
@@ -43,6 +49,15 @@ const PROGRESS: WordBookProgress = {
   wrong: 5,
   untouched: 65,
   accuracy: 82.5,
+};
+
+const STATS: StatsOverview = {
+  consecutive_days: 3,
+  checked_in_today: false,
+  today: { date: "2026-10-16", sessions: 0, words: 0, correct: 0, accuracy: 0 },
+  daily: [],
+  recent: [],
+  totals: { mastered: 0, learning: 0, wrong: 0, practiced: 0 },
 };
 
 const QUEUE: ReviewQueue = {
@@ -70,12 +85,30 @@ beforeEach(() => {
   mockedFetchWordbooks.mockResolvedValue([BOOK]);
   mockedFetchProgress.mockResolvedValue(PROGRESS);
   mockedFetchReviewQueue.mockResolvedValue(QUEUE);
+  mockedFetchOverview.mockResolvedValue(STATS);
   mockedStartPractice.mockResolvedValue({
     session_id: "s-1",
     wordbook_id: 1,
     mode: "review",
     total: 2,
     clues: [],
+  });
+});
+
+describe("学习看板", () => {
+  it("进入词书中心即拉取看板概览", async () => {
+    renderDashboard();
+
+    expect(await screen.findByText("学习看板")).toBeTruthy();
+    expect(mockedFetchOverview).toHaveBeenCalledTimes(1);
+  });
+
+  it("看板拉取失败时不影响词书列表", async () => {
+    mockedFetchOverview.mockRejectedValue(new Error("boom"));
+    renderDashboard();
+
+    expect(await screen.findByText("词书中心")).toBeTruthy();
+    expect(screen.queryByText("学习看板")).toBeNull();
   });
 });
 
