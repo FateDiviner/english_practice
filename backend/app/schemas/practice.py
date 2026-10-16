@@ -130,6 +130,8 @@ class WrongBookItem(BaseModel):
     example_en: str
     example_cn: str
     last_practiced: str | None = None
+    # 词条已被下架：历史错题仍展示，但不再进入重练
+    archived: bool = False
 
 
 class WrongBookResponse(BaseModel):

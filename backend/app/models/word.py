@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
+
+from app.constants import STATUS_ACTIVE
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -25,6 +27,8 @@ class Word(Base):
     example_en: Mapped[str] = mapped_column(Text, default="", nullable=False)
     example_cn: Mapped[str] = mapped_column(Text, default="", nullable=False)
     sequence: Mapped[int] = mapped_column(default=0, nullable=False)
+    # active: 可用 / archived: 已下架（不再出题，但错题与备份仍保留）
+    status: Mapped[str] = mapped_column(String(16), default=STATUS_ACTIVE, index=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

@@ -66,8 +66,39 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+# 既有表里必须存在但可能缺失的列：create_all 只建新表、不给老表加列，
+# 本项目刻意不用 Alembic，因此新增字段一律在这里幂等补齐
+REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
+    "users": {"role": "VARCHAR(16) DEFAULT 'user' NOT NULL"},
+    "wordbooks": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+    "words": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+}
+
+
+def _ensure_columns(target: Engine | None = None) -> None:
+    """给已存在的表补齐缺失列，SQLite 与 MySQL 通用。
+
+    target 仅用于测试：传入一个临时引擎即可验证「旧版表结构被补齐」这条路径。
+    """
+    from sqlalchemy import inspect, text
+
+    target = target or engine
+    inspector = inspect(target)
+    tables = set(inspector.get_table_names())
+    with target.begin() as conn:
+        for table, columns in REQUIRED_COLUMNS.items():
+            if table not in tables:
+                continue
+            existing = {column["name"] for column in inspector.get_columns(table)}
+            for name, ddl in columns.items():
+                if name in existing:
+                    continue
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
+
 def init_db() -> None:
-    """创建全部表结构（幂等）。"""
+    """创建全部表结构并补齐缺失列（幂等）。"""
     from app import models  # noqa: F401  确保模型完成注册
 
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()

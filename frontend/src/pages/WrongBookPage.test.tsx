@@ -27,6 +27,7 @@ const ITEM: WrongBookItem = {
   example_en: "He abandoned his car in the snow.",
   example_cn: "他把车丢弃在雪地里。",
   last_practiced: "2026-10-16T08:00:00",
+  archived: false,
 };
 
 function renderWrongBook() {
@@ -91,5 +92,56 @@ describe("错题本 AI 讲解", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: /AI 讲解/ })).toBeNull()
     );
+  });
+});
+
+describe("下架词条在错题本中的表现", () => {
+  it("显示已下架标记", async () => {
+    mockedFetchWrongBook.mockResolvedValue({
+      total: 1,
+      items: [{ ...ITEM, archived: true }],
+    });
+    renderWrongBook();
+
+    expect(await screen.findByText("[已下架]")).toBeTruthy();
+  });
+
+  it("下架词仍保留讲解与发音入口", async () => {
+    mockedFetchWrongBook.mockResolvedValue({
+      total: 1,
+      items: [{ ...ITEM, archived: true }],
+    });
+    renderWrongBook();
+
+    expect(await screen.findByRole("button", { name: /AI 讲解/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /发音/ })).toBeTruthy();
+  });
+
+  it("重练数量只算未下架的词", async () => {
+    mockedFetchWrongBook.mockResolvedValue({
+      total: 2,
+      items: [{ ...ITEM, archived: true }, { ...ITEM, word_id: 12, word: "ability", archived: false }],
+    });
+    renderWrongBook();
+
+    expect(await screen.findByRole("button", { name: /错题专项重练（1）/ })).toBeTruthy();
+  });
+
+  it("全部下架时禁用重练", async () => {
+    mockedFetchWrongBook.mockResolvedValue({
+      total: 1,
+      items: [{ ...ITEM, archived: true }],
+    });
+    renderWrongBook();
+
+    const button = await screen.findByRole("button", { name: /错题专项重练（0）/ });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("未下架时按钮可用", async () => {
+    renderWrongBook();
+
+    const button = await screen.findByRole("button", { name: /错题专项重练（1）/ });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 });

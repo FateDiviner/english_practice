@@ -12,6 +12,7 @@ from difflib import SequenceMatcher
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.constants import STATUS_ACTIVE
 from app.models.record import UserWordRecord
 from app.models.word import Word
 from app.schemas.practice import (
@@ -355,6 +356,8 @@ def list_wrong_book(db: Session, user_id: int, limit: int = 200) -> WrongBookRes
                 last_practiced=(
                     record.last_practiced.isoformat() if record.last_practiced else None
                 ),
+                # 下架的错词一律保留展示：静默消失会让用户以为错题数据丢了
+                archived=word.status != STATUS_ACTIVE,
             )
         )
     return WrongBookResponse(total=len(items), items=items)

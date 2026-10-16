@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.constants import STATUS_ACTIVE
 from app.models.record import UserWordRecord
 from app.models.word import Word
 
@@ -162,9 +163,16 @@ def select_session_words(
     """为一次练习挑选单词，优先错题与到期复习词。"""
     now = _utcnow()
 
+    # 下架词不再出题：normal / wrong_book / review 三种模式共用这一次查询，
+    # 在这里过滤一次即可全部覆盖
     words = list(
         db.scalars(
-            select(Word).where(Word.wordbook_id == wordbook_id).order_by(Word.sequence, Word.id)
+            select(Word)
+            .where(
+                Word.wordbook_id == wordbook_id,
+                Word.status == STATUS_ACTIVE,
+            )
+            .order_by(Word.sequence, Word.id)
         ).all()
     )
     if not words:
@@ -214,8 +222,14 @@ def select_session_words(
 
 def compute_progress(db: Session, user_id: int, wordbook_id: int) -> dict[str, int | float]:
     """统计某词书的学习进度。"""
+    # 进度分母只算可用词，否则一本下了架一半的词书，正确率会被稀释
     words = list(
-        db.scalars(select(Word.id).where(Word.wordbook_id == wordbook_id)).all()
+        db.scalars(
+            select(Word.id).where(
+                Word.wordbook_id == wordbook_id,
+                Word.status == STATUS_ACTIVE,
+            )
+        ).all()
     )
     total_words = len(words)
     if total_words == 0:
@@ -269,8 +283,14 @@ def build_review_queue(
     today_end = _end_of_day(now)
     horizon = today_end + timedelta(days=7)
 
+    # 今日待复习只统计可用词：下架的词不该再出现在用户的复习压力里
     words = list(
-        db.scalars(select(Word).where(Word.wordbook_id == wordbook_id)).all()
+        db.scalars(
+            select(Word).where(
+                Word.wordbook_id == wordbook_id,
+                Word.status == STATUS_ACTIVE,
+            )
+        ).all()
     )
     records: dict[int, UserWordRecord] = {}
     if words:

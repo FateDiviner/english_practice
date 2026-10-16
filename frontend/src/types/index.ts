@@ -133,6 +133,8 @@ export interface WrongBookItem {
   example_en: string;
   example_cn: string;
   last_practiced: string | null;
+  /** 词条已被下架：历史错题仍展示，但不再进入重练 */
+  archived: boolean;
 }
 
 /** 错题本 */

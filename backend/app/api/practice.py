@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db import get_db
 from app.models.user import User
+from app.constants import STATUS_ACTIVE
 from app.models.wordbook import WordBook
 from app.schemas.practice import (
     HintRequest,
@@ -29,6 +30,9 @@ def _ensure_book(db: Session, wordbook_id: int) -> WordBook:
     book = db.get(WordBook, wordbook_id)
     if book is None:
         raise HTTPException(status_code=404, detail="词书不存在")
+    # 已下架的词书不能再开局；进行中的会话不受影响，用户可以答完
+    if book.status != STATUS_ACTIVE:
+        raise HTTPException(status_code=409, detail="该词书已下架")
     return book
 
 

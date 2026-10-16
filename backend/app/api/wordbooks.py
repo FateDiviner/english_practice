@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.db import get_db
 from app.models.user import User
+from app.constants import STATUS_ACTIVE
 from app.models.wordbook import WordBook
 from app.schemas.word import WordBookOut, WordBookProgress
 from app.services import scheduler
@@ -19,7 +20,12 @@ router = APIRouter(prefix="/api/wordbooks", tags=["wordbooks"])
 @router.get("", response_model=list[WordBookOut])
 def list_wordbooks(db: Session = Depends(get_db)) -> list[WordBookOut]:
     """列出全部内置官方词书。"""
-    rows = db.scalars(select(WordBook).order_by(WordBook.id)).all()
+    # 下架词书对用户完全不可见
+    rows = db.scalars(
+        select(WordBook)
+        .where(WordBook.status == STATUS_ACTIVE)
+        .order_by(WordBook.id)
+    ).all()
     return [WordBookOut.model_validate(row) for row in rows]
 
 
@@ -46,6 +52,8 @@ def activate_wordbook(
     book = db.get(WordBook, wordbook_id)
     if book is None:
         raise HTTPException(status_code=404, detail="词书不存在")
+    if book.status != STATUS_ACTIVE:
+        raise HTTPException(status_code=409, detail="该词书已下架，无法激活")
     user.active_wordbook_id = book.id
     db.commit()
     db.refresh(user)

@@ -62,12 +62,16 @@ export default function WrongBookPage() {
     navigate("/chat");
   };
 
+  // 下架的词不再出题：重练必须落在第一个仍可用的词书上，
+  // 否则开局会被后端以 409 拒绝
+  const trainable = items.filter((item) => !item.archived);
+  const startTarget = trainable[0] ?? null;
+
   const handleStart = async () => {
-    const first = items[0];
-    if (!first) return;
+    if (!startTarget) return;
     setStarting(true);
     try {
-      await startPractice(first.wordbook_id, "wrong_book");
+      await startPractice(startTarget.wordbook_id, "wrong_book");
       navigate("/practice");
     } catch (error) {
       Message.error({ content: toMessage(error) });
@@ -104,11 +108,11 @@ export default function WrongBookPage() {
             type="primary"
             className="focus-ring"
             loading={starting}
-            disabled={items.length === 0}
+            disabled={!startTarget}
             icon={<IconPlayArrow />}
             onClick={() => void handleStart()}
           >
-            错题专项重练（{items.length}）
+            错题专项重练（{trainable.length}）
           </Button>
         </Space>
       </Space>
@@ -145,6 +149,11 @@ export default function WrongBookPage() {
                     <Tag color="red" size="small">
                       错 {item.wrong_count} 次
                     </Tag>
+                    {item.archived && (
+                      <Tag color="gray" size="small">
+                        [已下架]
+                      </Tag>
+                    )}
                   </Space>
 
                   <Space size={8}>
