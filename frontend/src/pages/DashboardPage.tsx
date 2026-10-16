@@ -12,12 +12,13 @@ import {
   Tooltip,
   Typography,
 } from "@arco-design/web-react";
-import { IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
-import type { WordBook, WordBookProgress } from "@/types";
+import { IconHistory, IconPlayArrow, IconRefresh } from "@arco-design/web-react/icon";
+import type { ReviewQueue, WordBook, WordBookProgress } from "@/types";
 import { activateWordbook, fetchProgress, fetchWordbooks } from "@/api/wordbooks";
+import { fetchReviewQueue } from "@/api/practice";
 import { useAuthStore } from "@/stores/auth";
 import { useAppStore } from "@/stores/app";
-import { usePracticeStore } from "@/stores/practice";
+import { usePracticeStore, type PracticeMode } from "@/stores/practice";
 import { toMessage } from "@/api/client";
 
 /** 控制台 / 词书中心：选择激活词书并开始默写 */
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [review, setReview] = useState<ReviewQueue | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +59,25 @@ export default function DashboardPage() {
     void load();
   }, [load]);
 
+  // 今日待复习队列按激活词书统计，切换词书后重新拉取
+  useEffect(() => {
+    if (!activeId) {
+      setReview(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchReviewQueue(activeId)
+      .then((queue) => {
+        if (!cancelled) setReview(queue);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) Message.error({ content: toMessage(error) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
+
   const handleActivate = async (book: WordBook) => {
     setActiveId(book.id);
     try {
@@ -66,7 +87,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleStart = async (mode: "normal" | "wrong_book" = "normal") => {
+  const handleStart = async (mode: PracticeMode = "normal") => {
     if (!activeId) return;
     setStarting(true);
     try {
@@ -250,6 +271,27 @@ export default function DashboardPage() {
               {activeProgress ? `（${activeProgress.wrong}）` : ""}
             </Button>
 
+            <Tooltip
+              content={
+                review && review.total > 0
+                  ? `已过期 ${review.overdue} · 今日到期 ${review.due_today}`
+                  : "暂无到期词，系统会按遗忘曲线自动安排"
+              }
+            >
+              <Button
+                size="large"
+                className="focus-ring"
+                icon={<IconHistory />}
+                loading={starting}
+                disabled={starting || !review || review.total === 0}
+                onClick={() => void handleStart("review")}
+              >
+                {review && review.total > 0
+                  ? `今日复习（${review.total}）`
+                  : "今日复习"}
+              </Button>
+            </Tooltip>
+
             <Radio.Group
               type="button"
               size="small"
@@ -271,6 +313,19 @@ export default function DashboardPage() {
             >
               本词书正确率 {activeProgress.accuracy}% · 已掌握 {activeProgress.mastered} /{" "}
               {activeProgress.total_words}
+            </Typography.Text>
+          )}
+
+          {review && review.total > 0 && (
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: 4, fontSize: 13 }}
+            >
+              今日待复习 {review.total}（已过期 {review.overdue} · 今日到期{" "}
+              {review.due_today}）
+              {review.upcoming_7d > 0
+                ? `，未来 7 天还有 ${review.upcoming_7d} 个词到期`
+                : ""}
             </Typography.Text>
           )}
         </Card>

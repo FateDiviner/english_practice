@@ -9,6 +9,9 @@ import { fetchHint, finishPractice, startPractice, submitAnswer } from "@/api/pr
 import { toMessage } from "@/api/client";
 import { useAppStore } from "@/stores/app";
 
+/** 练习模式：常规默写 / 错题重练 / 今日到期词复习 */
+export type PracticeMode = "normal" | "wrong_book" | "review";
+
 export type PracticePhase =
   | "idle"
   | "starting"
@@ -28,7 +31,7 @@ interface PracticeState {
   error: string | null;
   settlement: SettlementResponse | null;
 
-  start: (wordbookId: number, mode?: "normal" | "wrong_book") => Promise<void>;
+  start: (wordbookId: number, mode?: PracticeMode) => Promise<void>;
   submit: (answer: string, skipped?: boolean) => Promise<void>;
   revealHint: () => Promise<void>;
   /** 进入下一词；已是最后一词则自动结算 */
@@ -45,7 +48,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   error: null,
   settlement: null,
 
-  start: async (wordbookId, mode = "normal") => {
+  start: async (wordbookId: number, mode: PracticeMode = "normal") => {
     const groupSize = useAppStore.getState().groupSize;
     set({ phase: "starting", error: null, session: null, settlement: null });
     try {

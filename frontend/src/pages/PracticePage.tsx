@@ -27,6 +27,19 @@ import { useSpeech } from "@/hooks/useSpeech";
 /** 答对后自动切词的等待时长（AGENTS.md 规范：600~800ms） */
 const AUTO_ADVANCE_MS = 700;
 
+/** 三种练习模式的标签与配色，页面上必须一眼可辨 */
+const MODE_LABEL: Record<string, string> = {
+  normal: "[默写练习]",
+  wrong_book: "[错题重练]",
+  review: "[今日复习]",
+};
+
+const MODE_COLOR: Record<string, string> = {
+  normal: "arcoblue",
+  wrong_book: "red",
+  review: "green",
+};
+
 /**
  * 逐字符比对结果渲染。
  *
@@ -367,8 +380,8 @@ export default function PracticePage() {
         style={{ width: "100%", justifyContent: "space-between", marginBottom: 12 }}
       >
         <Space size={8}>
-          <Tag size="small" color={session.mode === "wrong_book" ? "red" : "arcoblue"}>
-            {session.mode === "wrong_book" ? "[错题重练]" : "[默写练习]"}
+          <Tag size="small" color={MODE_COLOR[session.mode] ?? "arcoblue"}>
+            {MODE_LABEL[session.mode] ?? "[默写练习]"}
           </Tag>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
             {index + 1} / {total}

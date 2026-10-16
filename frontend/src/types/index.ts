@@ -65,7 +65,7 @@ export interface WordClue {
 export interface PracticeStartResponse {
   session_id: string;
   wordbook_id: number;
-  mode: "normal" | "wrong_book";
+  mode: "normal" | "wrong_book" | "review";
   total: number;
   clues: WordClue[];
 }
@@ -139,6 +139,26 @@ export interface WrongBookItem {
 export interface WrongBookResponse {
   total: number;
   items: WrongBookItem[];
+}
+
+/** 今日待复习队列的预览条目（刻意不含拼写，防止扫一眼就背过） */
+export interface ReviewPreviewItem {
+  word_id: number;
+  translation: string;
+  phonetic: string;
+  status: "learning" | "mastered" | "wrong";
+  wrong_count: number;
+  next_review_at: string | null;
+}
+
+/** 某词书今日的复习压力：total = overdue + due_today */
+export interface ReviewQueue {
+  wordbook_id: number;
+  total: number;
+  overdue: number;
+  due_today: number;
+  upcoming_7d: number;
+  preview: ReviewPreviewItem[];
 }
 
 /** 实时纠错结构化区块 */

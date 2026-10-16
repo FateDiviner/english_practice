@@ -12,6 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
     // 开启全局注入后 @testing-library/react 才会自动在用例间清理 DOM
     globals: true,
     include: ["src/**/*.test.{ts,tsx}"],

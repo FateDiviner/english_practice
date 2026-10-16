@@ -2,6 +2,7 @@ import { http } from "./client";
 import type {
   HintResponse,
   PracticeStartResponse,
+  ReviewQueue,
   SettlementResponse,
   SubmitResponse,
   WrongBookResponse,
@@ -11,7 +12,7 @@ import type {
 export async function startPractice(
   wordbookId: number,
   size: number,
-  mode: "normal" | "wrong_book" = "normal"
+  mode: "normal" | "wrong_book" | "review" = "normal"
 ): Promise<PracticeStartResponse> {
   const { data } = await http.post<PracticeStartResponse>("/api/practice/start", {
     wordbook_id: wordbookId,
@@ -57,5 +58,13 @@ export async function finishPractice(sessionId: string): Promise<SettlementRespo
 /** 拉取错题本 */
 export async function fetchWrongBook(): Promise<WrongBookResponse> {
   const { data } = await http.get<WrongBookResponse>("/api/practice/wrong-book");
+  return data;
+}
+
+/** 拉取某词书今日的待复习队列 */
+export async function fetchReviewQueue(wordbookId: number): Promise<ReviewQueue> {
+  const { data } = await http.get<ReviewQueue>("/api/practice/review-queue", {
+    params: { wordbook_id: wordbookId },
+  });
   return data;
 }
