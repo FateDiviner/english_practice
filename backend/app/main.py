@@ -25,7 +25,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="英语练习平台",
     description="默写记忆 + AI 场景实战的极简英语练习后端",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
