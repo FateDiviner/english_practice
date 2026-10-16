@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.audit import AuditLog
-from app.models.user import User
+from core.models.audit import AuditLog
+from core.models.user import User
 from app.schemas.audit import AuditLogOut
 from app.services import audit_service
 from scripts.create_admin import promote

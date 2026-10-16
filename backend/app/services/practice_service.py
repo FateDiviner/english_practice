@@ -12,9 +12,9 @@ from difflib import SequenceMatcher
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.constants import STATUS_ACTIVE
-from app.models.record import UserWordRecord
-from app.models.word import Word
+from core.constants import STATUS_ACTIVE
+from core.models.record import UserWordRecord
+from core.models.word import Word
 from app.schemas.practice import (
     DiffCell,
     HintResponse,

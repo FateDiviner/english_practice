@@ -7,11 +7,11 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.chat import ChatMessage
-from app.models.record import UserWordRecord
-from app.models.session import PracticeSessionRecord
-from app.models.user import User
-from app.security import create_access_token, hash_password, verify_password
+from core.models.chat import ChatMessage
+from core.models.record import UserWordRecord
+from core.models.session import PracticeSessionRecord
+from core.models.user import User
+from core.security import create_access_token, hash_password, verify_password
 from app.services import stats_service
 
 GUEST_PREFIX = "guest_"

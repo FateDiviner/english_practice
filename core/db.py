@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from app.config import get_settings
+from core.config import get_settings
 
 settings = get_settings()
 
@@ -98,7 +98,7 @@ def _ensure_columns(target: Engine | None = None) -> None:
 
 def init_db() -> None:
     """创建全部表结构并补齐缺失列（幂等）。"""
-    from app import models  # noqa: F401  确保模型完成注册
+    from core import models  # noqa: F401  确保模型完成注册
 
     Base.metadata.create_all(bind=engine)
     _ensure_columns()

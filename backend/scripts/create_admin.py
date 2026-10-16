@@ -14,8 +14,8 @@ import sys
 
 from sqlalchemy import select
 
-from app.db import SessionLocal
-from app.models.user import User
+from core.db import SessionLocal
+from core.models.user import User
 
 ADMIN_ROLE = "admin"
 

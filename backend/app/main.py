@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 
 from app.api import auth, chat, practice, stats, user, wordbooks
 from app.api.admin import audit_router
-from app.config import get_settings
-from app.db import init_db
+from core.config import get_settings
+from core.db import init_db
 
 settings = get_settings()
 

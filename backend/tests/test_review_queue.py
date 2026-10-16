@@ -10,9 +10,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.record import UserWordRecord
-from app.models.word import Word
-from app.models.wordbook import WordBook
+from core.models.record import UserWordRecord
+from core.models.word import Word
+from core.models.wordbook import WordBook
 from app.services import scheduler
 
 

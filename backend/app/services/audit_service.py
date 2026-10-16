@@ -11,8 +11,8 @@ import json
 from fastapi import Request
 from sqlalchemy.orm import Session
 
-from app.models.audit import AuditLog
-from app.models.user import User
+from core.models.audit import AuditLog
+from core.models.user import User
 
 # 这些字段一旦进入 detail 就等于把凭据写进了日志，直接拒绝
 SENSITIVE_KEYS = frozenset(

@@ -7,9 +7,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
-from app.db import get_db
-from app.models.audit import AuditLog
-from app.models.user import User
+from core.db import get_db
+from core.models.audit import AuditLog
+from core.models.user import User
 from app.schemas.audit import AuditLogOut, AuditLogPage
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])

@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.models.record import UserWordRecord
-from app.models.word import Word
+from core.models.record import UserWordRecord
+from core.models.word import Word
 from app.services import scheduler
 
 

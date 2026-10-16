@@ -14,9 +14,9 @@ from app.ai.client import AIError, stream_chat
 from app.ai.corrections import feedback_from_json, feedback_to_json, parse_feedback
 from app.ai.prompts import build_messages
 from app.api.deps import get_current_user
-from app.db import SessionLocal, get_db
-from app.models.chat import ChatMessage
-from app.models.user import User
+from core.db import SessionLocal, get_db
+from core.models.chat import ChatMessage
+from core.models.user import User
 from app.schemas.chat import ChatSendRequest, MessageOut
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])

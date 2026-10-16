@@ -21,7 +21,7 @@ from pathlib import Path
 _USE_EXTERNAL_DB = os.environ.pop("RUN_MYSQL_TESTS", "") == "1"
 
 if _USE_EXTERNAL_DB:
-    from app.config import get_settings as _get_settings  # 需在改写前读取 .env
+    from core.config import get_settings as _get_settings  # 需在改写前读取 .env
 
     from sqlalchemy.engine import make_url as _make_url
 
@@ -58,7 +58,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.ai import client as ai_client  # noqa: E402
-from app.db import SessionLocal, init_db  # noqa: E402
+from core.db import SessionLocal, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services import practice_service  # noqa: E402
 from scripts.init_db import seed_wordbooks  # noqa: E402
@@ -71,7 +71,7 @@ def _database() -> None:
     外部库（MySQL）会先清空重建，保证每次运行从零开始。
     """
     if _USE_EXTERNAL_DB:
-        from app.db import Base, engine
+        from core.db import Base, engine
 
         Base.metadata.drop_all(bind=engine)
         print("\n[测试库] 已清空外部数据库后重建表结构")
@@ -80,7 +80,7 @@ def _database() -> None:
     if _USE_EXTERNAL_DB:
         from sqlalchemy import func, select
 
-        from app.models.word import Word
+        from core.models.word import Word
 
         with SessionLocal() as session:
             total = session.scalar(select(func.count(Word.id)))

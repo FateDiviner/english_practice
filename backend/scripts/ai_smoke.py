@@ -26,7 +26,7 @@ MAX_CHARS = 400
 
 
 async def run() -> int:
-    from app.config import get_settings
+    from core.config import get_settings
 
     settings = get_settings()
     if not settings.ai_enabled:

@@ -12,10 +12,10 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.record import UserWordRecord
-from app.models.session import PracticeSessionRecord
-from app.models.user import User
-from app.models.wordbook import WordBook
+from core.models.record import UserWordRecord
+from core.models.session import PracticeSessionRecord
+from core.models.user import User
+from core.models.wordbook import WordBook
 
 # 看板默认展示的天数
 DEFAULT_TREND_DAYS = 7

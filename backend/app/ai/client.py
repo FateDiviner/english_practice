@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 
 from app.ai.prompts import PRESETS
-from app.config import get_settings
+from core.config import get_settings
 
 # Mock 降级时的打字机延迟（毫秒），测试可置 0 以加速
 MOCK_DELAY_MS = 12

@@ -2,7 +2,7 @@
 
 AGENTS.md 第 1 条：单词与音标数据准确性第一。
 
-规则本身在 app/services/word_validator.py，测试与管理端在线录入共用同一份，
+规则本身在 core/services/word_validator.py，测试与管理端在线录入共用同一份，
 避免「测试过了但页面能存进脏数据」。这里按规则名分组断言，保持逐条可读。
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from app.services.word_validator import (
+from core.services.word_validator import (
     REQUIRED_KEYS,
     validate_book,
     validate_word,

@@ -17,12 +17,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, delete, inspect, select, text
 from sqlalchemy.orm import Session
 
-from app.constants import STATUS_ACTIVE, STATUS_ARCHIVED
-from app.db import REQUIRED_COLUMNS, _ensure_columns, engine, init_db
-from app.models.record import UserWordRecord
-from app.models.session import PracticeSessionRecord
-from app.models.word import Word
-from app.models.wordbook import WordBook
+from core.constants import STATUS_ACTIVE, STATUS_ARCHIVED
+from core.db import REQUIRED_COLUMNS, _ensure_columns, engine, init_db
+from core.models.record import UserWordRecord
+from core.models.session import PracticeSessionRecord
+from core.models.word import Word
+from core.models.wordbook import WordBook
 from app.services import scheduler
 
 

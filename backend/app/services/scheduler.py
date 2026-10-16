@@ -12,9 +12,9 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.constants import STATUS_ACTIVE
-from app.models.record import UserWordRecord
-from app.models.word import Word
+from core.constants import STATUS_ACTIVE
+from core.models.record import UserWordRecord
+from core.models.word import Word
 
 # 各记忆档位对应的复习间隔（分钟）：5 分钟 / 30 分钟 / 2 小时 / 6 小时 / 1 天 / 3 天 / 7 天
 REVIEW_INTERVALS_MINUTES: list[int] = [5, 30, 120, 360, 1440, 4320, 10080]

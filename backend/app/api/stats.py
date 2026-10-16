@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.db import get_db
-from app.models.user import User
+from core.db import get_db
+from core.models.user import User
 from app.schemas.stats import StatsOverview
 from app.services import stats_service
 

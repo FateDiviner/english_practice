@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.chat import ChatMessage
+from core.models.chat import ChatMessage
 
 
 def first_wordbook(client: TestClient) -> dict:
@@ -207,8 +207,8 @@ class TestPracticeFlow:
 
     def test_clue_does_not_leak_spelling_via_example(self, auth_client: TestClient):
         session = self._start(auth_client, size=10)
-        from app.db import SessionLocal
-        from app.models.word import Word
+        from core.db import SessionLocal
+        from core.models.word import Word
 
         with SessionLocal() as db:
             for clue in session["clues"]:
@@ -256,8 +256,8 @@ class TestPracticeFlow:
         assert body["wrong_count"] == 1
 
         # 原地订正：再答一次
-        from app.db import SessionLocal
-        from app.models.word import Word
+        from core.db import SessionLocal
+        from core.models.word import Word
 
         with SessionLocal() as db:
             word = db.get(Word, clue["id"])
@@ -322,8 +322,8 @@ class TestPracticeFlow:
     def test_settlement(self, auth_client: TestClient):
         session = self._start(auth_client, size=5)
         sid = session["session_id"]
-        from app.db import SessionLocal
-        from app.models.word import Word
+        from core.db import SessionLocal
+        from core.models.word import Word
 
         with SessionLocal() as db:
             answers = {c["id"]: (db.get(Word, c["id"]).word if db.get(Word, c["id"]) else "")

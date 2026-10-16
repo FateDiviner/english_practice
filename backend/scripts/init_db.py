@@ -13,9 +13,9 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.db import SessionLocal, init_db
-from app.models.word import Word
-from app.models.wordbook import WordBook
+from core.db import SessionLocal, init_db
+from core.models.word import Word
+from core.models.wordbook import WordBook
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -95,8 +95,8 @@ def _force_impact() -> tuple[int, int]:
     """估算 --force 的破坏面：(词条数, 受影响的用户练习记录数)。"""
     from sqlalchemy import func, select
 
-    from app.models.record import UserWordRecord
-    from app.models.word import Word
+    from core.models.record import UserWordRecord
+    from core.models.word import Word
 
     with SessionLocal() as db:
         words = db.scalar(select(func.count(Word.id))) or 0
