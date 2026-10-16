@@ -48,9 +48,18 @@ def list_messages(user: User = Depends(get_current_user),
     ).all()
     out: list[MessageOut] = []
     for row in reversed(list(rows)):
-        message = MessageOut.model_validate(row)
-        message.feedback = feedback_from_json(row.feedback)
-        out.append(message)
+        # feedback 列入库的是 JSON 字符串，直接 model_validate 会被强转成
+        # FeedbackBlock 并抛 ValidationError，导致只要历史里出现过一条带纠错
+        # 区块的回复，整个历史接口就 500；必须显式还原
+        out.append(
+            MessageOut(
+                id=row.id,
+                role=row.role,
+                content=row.content,
+                feedback=feedback_from_json(row.feedback),
+                created_at=row.created_at,
+            )
+        )
     return out
 
 

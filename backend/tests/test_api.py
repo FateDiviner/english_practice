@@ -6,6 +6,9 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models.chat import ChatMessage
 
 
 def first_wordbook(client: TestClient) -> dict:
@@ -460,6 +463,35 @@ class TestChat:
         cleared = auth_client.delete("/api/chat/messages")
         assert cleared.status_code == 200
         assert auth_client.get("/api/chat/messages").json() == []
+
+    def test_history_returns_parsed_feedback(self, auth_client: TestClient):
+        # 纠错区块以 JSON 字符串入库；带纠错的历史曾因直接 model_validate 而整条 500
+        auth_client.post("/api/chat/send", json={"content": "I am agree with you."})
+
+        history = auth_client.get("/api/chat/messages")
+
+        assert history.status_code == 200, history.text
+        with_feedback = [item for item in history.json() if item["feedback"]]
+        assert with_feedback, "带纠错区块的历史不应被丢弃或报错"
+        block = with_feedback[-1]["feedback"]
+        assert block["grammar"]
+        assert block["polish"]
+
+    def test_history_survives_malformed_feedback(
+        self, auth_client: TestClient, db: Session
+    ):
+        user_id = auth_client.get("/api/auth/me").json()["id"]
+        db.add(
+            ChatMessage(
+                user_id=user_id, role="assistant", content="ok", feedback="{broken json"
+            )
+        )
+        db.commit()
+
+        history = auth_client.get("/api/chat/messages")
+
+        assert history.status_code == 200, history.text
+        assert history.json()[0]["feedback"] is None
 
     def test_empty_message_rejected(self, auth_client: TestClient):
         response = auth_client.post("/api/chat/send", json={"content": "   "})
