@@ -1,6 +1,9 @@
 """内置词书数据质量红线测试。
 
 AGENTS.md 第 1 条：单词与音标数据准确性第一。
+
+规则本身在 app/services/word_validator.py，测试与管理端在线录入共用同一份，
+避免「测试过了但页面能存进脏数据」。这里按规则名分组断言，保持逐条可读。
 """
 
 from __future__ import annotations
@@ -11,14 +14,13 @@ from pathlib import Path
 
 import pytest
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-
-REQUIRED_KEYS = {"word", "phonetic", "translation", "example_en", "example_cn"}
-# IPA 中允许出现的字符（含音标专用符号与连接符）
-PHONETIC_ALLOWED = re.compile(r"^[ˈˌː.\/əæɔʊɪiɜʌɑa-zæɔʃθðʒŋ()\-ˈˌː\.]+$")
-POS_PREFIX = re.compile(
-    r"^(?:conj|prep|pron|adj|adv|num|art|aux|intj|int|vt|vi|n|v)\b"
+from app.services.word_validator import (
+    REQUIRED_KEYS,
+    validate_book,
+    validate_word,
 )
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def load_books() -> list[dict]:
@@ -36,83 +38,131 @@ def all_words() -> list[tuple[str, dict]]:
             yield book["code"], item
 
 
+def issues_of(item: dict, rule: str) -> list[str]:
+    """取出命中某条规则的问题文案。"""
+    return [issue.message for issue in validate_word(item).issues if issue.rule == rule]
+
+
+WORDS = list(all_words())
+WORD_IDS = [f"{code}/{item.get('word')}" for code, item in WORDS]
+
+
 class TestBookStructure:
     @pytest.mark.parametrize("book", BOOKS, ids=lambda b: b["code"])
-    def test_required_top_level_fields(self, book: dict):
-        for key in ("code", "title", "description", "difficulty", "words"):
-            assert key in book, f"{book.get('code')} 缺少字段 {key}"
-        assert book["words"], f"{book['code']} 没有任何单词"
+    def test_book_is_structurally_valid(self, book: dict):
+        result = validate_book(book)
+        assert result.ok, f"{book.get('code')} 结构问题: {[i.message for i in result.issues]}"
 
-    @pytest.mark.parametrize("book", BOOKS, ids=lambda b: b["code"])
-    def test_book_codes_unique(self, book: dict):
-        codes = [b["code"] for b in BOOKS]
-        assert codes.count(book["code"]) == 1
+    def test_no_duplicate_codes_across_books(self):
+        codes = [book["code"] for book in BOOKS]
+        assert len(codes) == len(set(codes)), f"词书 code 重复: {codes}"
 
-    @pytest.mark.parametrize("book", BOOKS, ids=lambda b: b["code"])
-    def test_no_duplicate_words_within_book(self, book: dict):
-        words = [item["word"].lower() for item in book["words"]]
-        duplicates = {w for w in words if words.count(w) > 1}
-        assert not duplicates, f"{book['code']} 存在重复词: {duplicates}"
+    def test_required_keys_documented(self):
+        """字段契约变更时必须同步更新校验器，这里做一次显式对齐。"""
+        assert set(REQUIRED_KEYS) == {
+            "word", "phonetic", "translation", "example_en", "example_cn",
+        }
 
 
 class TestWordFields:
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_all_fields_present_and_non_empty(self, code: str, item: dict):
-        missing = REQUIRED_KEYS - set(item)
+        missing = set(REQUIRED_KEYS) - set(item)
         assert not missing, f"{code} / {item.get('word')} 缺少字段 {missing}"
         for key in REQUIRED_KEYS:
             assert str(item[key]).strip(), f"{code} / {item['word']} 字段 {key} 为空"
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
-    def test_word_is_plain_ascii_lowercase(self, code: str, item: dict):
-        word = item["word"]
-        assert word.isascii(), f"{word} 含非 ASCII 字符"
-        assert word == word.strip()
-        assert not word[0].isupper(), f"{word} 应为小写词头（专有名词除外，此处需人工确认）"
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
+    def test_word_is_plain_ascii(self, code: str, item: dict):
+        assert not issues_of(item, "word_ascii"), f"{code} / {item['word']} 非纯 ASCII"
+        assert not issues_of(item, "word_trimmed"), f"{code} / {item['word']} 首尾含空格"
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
+    def test_word_is_lowercase_head(self, code: str, item: dict):
+        assert not issues_of(item, "word_lowercase_head")
+
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_phonetic_is_bracketed_and_valid(self, code: str, item: dict):
-        phonetic = item["phonetic"]
-        assert phonetic.startswith("/") and phonetic.endswith("/"), f"{item['word']} 音标未用 / / 包裹: {phonetic}"
-        assert len(phonetic) > 3, f"{item['word']} 音标过短: {phonetic}"
-        inner = phonetic[1:-1]
-        assert PHONETIC_ALLOWED.match(inner) or re.match(r"^[\wˈˌː.\/\-()]+$", inner), (
-            f"{item['word']} 音标含异常字符: {phonetic}"
-        )
+        assert not issues_of(item, "phonetic_brackets")
+        assert not issues_of(item, "phonetic_length")
+        assert not issues_of(item, "phonetic_charset")
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_translation_starts_with_pos(self, code: str, item: dict):
-        assert POS_PREFIX.match(item["translation"]), (
-            f"{code} / {item['word']} 释义缺少词性前缀: {item['translation']}"
-        )
+        assert not issues_of(item, "translation_pos_prefix")
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
-    def test_chinese_fields_contain_no_english_words(self, code: str, item: dict):
-        for key in ("example_cn",):
-            offenders = re.findall(r"[A-Za-z]{3,}", item[key])
-            assert not offenders, f"{code} / {item['word']} 中文字段夹杂英文 {offenders}"
-
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_translation_contains_chinese(self, code: str, item: dict):
-        assert re.search(r"[一-鿿]", item["translation"]), (
-            f"{code} / {item['word']} 释义缺少中文: {item['translation']}"
-        )
+        assert not issues_of(item, "translation_has_chinese")
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
+    def test_chinese_example_has_no_english(self, code: str, item: dict):
+        assert not issues_of(item, "example_cn_no_english")
+
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_examples_are_terminal_punctuated(self, code: str, item: dict):
-        assert item["example_en"].rstrip().endswith((".", "!", "?", '"')), (
-            f"{code} / {item['word']} 英文例句缺少句末标点"
-        )
-        assert item["example_cn"].rstrip().endswith(("。", "！", "？", '"')), (
-            f"{code} / {item['word']} 中文例句缺少句末标点"
-        )
+        assert not issues_of(item, "example_en_terminal")
+        assert not issues_of(item, "example_cn_terminal")
 
-    @pytest.mark.parametrize(("code", "item"), list(all_words()), ids=lambda v: v if isinstance(v, str) else "")
+    @pytest.mark.parametrize(("code", "item"), WORDS, ids=WORD_IDS)
     def test_example_shows_the_target_word(self, code: str, item: dict):
-        stem = item["word"][: max(4, len(item["word"]) - 2)]
-        assert stem in item["example_en"].lower(), (
-            f"{code} / {item['word']} 例句未体现目标词: {item['example_en']}"
-        )
+        assert not issues_of(item, "example_contains_word")
+
+
+class TestValidatorSelfCheck:
+    """校验器本身必须真的能拦住脏数据，否则上面全绿只是摆设。"""
+
+    def _good(self) -> dict:
+        return {
+            "word": "abandon",
+            "phonetic": "/əˈbændən/",
+            "translation": "v. 放弃，遗弃",
+            "example_en": "He abandoned his car in the snow.",
+            "example_cn": "他把车丢弃在雪地里。",
+        }
+
+    def test_accepts_a_clean_word(self):
+        assert validate_word(self._good()).ok
+
+    @pytest.mark.parametrize(
+        ("mutate", "rule"),
+        [
+            (lambda item: item.pop("phonetic"), "missing_field"),
+            (lambda item: item.update(phonetic=""), "missing_field"),
+            (lambda item: item.update(phonetic="abandon"), "phonetic_brackets"),
+            (lambda item: item.update(phonetic="//"), "phonetic_length"),
+            (lambda item: item.update(translation="放弃"), "translation_pos_prefix"),
+            (lambda item: item.update(translation="v. abandon"), "translation_has_chinese"),
+            (lambda item: item.update(example_cn="他 abandon 了车。"), "example_cn_no_english"),
+            (lambda item: item.update(example_en="He abandoned his car"), "example_en_terminal"),
+            (lambda item: item.update(example_cn="他把车丢弃了"), "example_cn_terminal"),
+            (lambda item: item.update(example_en="He left the car."), "example_contains_word"),
+            (lambda item: item.update(word="Abandon"), "word_lowercase_head"),
+            (lambda item: item.update(word=" 放弃 "), "word_ascii"),
+        ],
+    )
+    def test_rejects_known_bad_input(self, mutate, rule: str):
+        item = self._good()
+        mutate(item)
+
+        assert rule in validate_word(item).rules()
+
+    def test_collects_every_issue_instead_of_stopping_at_first(self):
+        item = self._good()
+        item["translation"] = "v. abandon"
+        item["example_en"] = "He left the car"
+
+        rules = validate_word(item).rules()
+
+        assert {"translation_has_chinese", "example_contains_word"} <= rules
+
+    def test_book_with_duplicate_words_rejected(self):
+        payload = {"code": "x", "title": "t", "words": [self._good(), self._good()]}
+
+        assert "book_duplicate_word" in validate_book(payload).rules()
+
+    def test_empty_book_rejected(self):
+        assert "book_empty" in validate_book({"code": "x", "title": "t", "words": []}).rules()
 
 
 class TestCoverage:

@@ -91,11 +91,44 @@ def seed_wordbooks(force: bool = False) -> dict[str, int]:
     return stats
 
 
+def _force_impact() -> tuple[int, int]:
+    """估算 --force 的破坏面：(词条数, 受影响的用户练习记录数)。"""
+    from sqlalchemy import func, select
+
+    from app.models.record import UserWordRecord
+    from app.models.word import Word
+
+    with SessionLocal() as db:
+        words = db.scalar(select(func.count(Word.id))) or 0
+        records = (
+            db.scalar(
+                select(func.count(UserWordRecord.id)).where(
+                    UserWordRecord.word_id.in_(select(Word.id))
+                )
+            )
+            or 0
+        )
+    return words, records
+
+
 def main() -> int:
     """入口：建表 + 导入词书。"""
     force = "--force" in sys.argv
+    assume_yes = "--yes" in sys.argv
     init_db()
     print("[数据库] 表结构已就绪")
+
+    if force and not assume_yes:
+        words, records = _force_impact()
+        if words or records:
+            # 与其靠时间戳猜"有没有在线改动"，不如把影响面直接摆出来让人判断
+            print(
+                f"[拒绝执行] --force 会删掉全部 {words} 个词条，"
+                f"并清掉 {records} 条用户练习记录。"
+            )
+            print("           确认无误后加上 --yes 重跑：python -m scripts.init_db --force --yes")
+            return 1
+
     stats = seed_wordbooks(force=force)
     print(
         f"[导入完成] 新增词书 {stats['books']} 本，新增单词 {stats['words']} 个，"
