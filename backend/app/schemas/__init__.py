@@ -6,6 +6,12 @@ from app.schemas.auth import (
     RegisterRequest,
     UserInfo,
 )
+from app.schemas.backup import (
+    BACKUP_FORMAT,
+    BACKUP_VERSION,
+    BackupFile,
+    ImportResult,
+)
 from app.schemas.chat import ChatSendRequest, FeedbackBlock, MessageOut
 from app.schemas.stats import (
     DailyStat,
@@ -44,6 +50,8 @@ __all__ = [
     "ChatSendRequest",
     "MessageOut",
     "FeedbackBlock",
+    "BackupFile",
+    "ImportResult",
     "DailyStat",
     "RecentSession",
     "LearningTotals",
