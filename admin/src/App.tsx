@@ -5,12 +5,15 @@ import {
   IconMoon,
   IconPoweroff,
   IconSun,
+  IconBook,
   IconUser,
 } from "@arco-design/web-react/icon";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import UsersPage from "@/pages/UsersPage";
+import WordbooksPage from "@/pages/WordbooksPage";
+import WordbookDetailPage from "@/pages/WordbookDetailPage";
 import AuditPage from "@/pages/AuditPage";
 import { fetchMe } from "@/api/auth";
 import { clearToken, getToken } from "@/api/client";
@@ -122,6 +125,14 @@ export default function App() {
       <Layout style={{ maxWidth: 1120, width: "100%", margin: "0 auto", padding: 20 }}>
         <Space size={8} style={{ marginBottom: 16 }}>
           <Button
+            type={location.pathname.startsWith("/wordbooks") ? "primary" : "text"}
+            className="focus-ring"
+            icon={<IconBook />}
+            onClick={() => navigate("/wordbooks")}
+          >
+            词库管理
+          </Button>
+          <Button
             type={location.pathname.startsWith("/users") ? "primary" : "text"}
             className="focus-ring"
             icon={<IconUser />}
@@ -142,6 +153,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<UsersPage currentUser={user} />} />
           <Route path="/users" element={<UsersPage currentUser={user} />} />
+          <Route path="/wordbooks" element={<WordbooksPage />} />
+          <Route path="/wordbooks/:bookId" element={<WordbookDetailPage />} />
           <Route path="/audit-logs" element={<AuditPage />} />
         </Routes>
       </Layout>

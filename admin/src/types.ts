@@ -56,3 +56,78 @@ export interface AuditLogPage {
   total: number;
   items: AuditLogOut[];
 }
+
+/** 词书（管理端视角） */
+export interface WordbookAdminOut {
+  id: number;
+  code: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  status: "active" | "archived";
+  total_words: number;
+  archived_words: number;
+  active_users: number;
+}
+
+export interface WordbookCreatePayload {
+  code: string;
+  title: string;
+  description?: string;
+  difficulty?: string;
+}
+
+export interface WordbookUpdatePayload {
+  title?: string;
+  description?: string;
+  difficulty?: string;
+  status?: "active" | "archived";
+}
+
+/** 词条（管理端视角） */
+export interface WordAdminOut {
+  id: number;
+  word: string;
+  phonetic: string;
+  translation: string;
+  example_en: string;
+  example_cn: string;
+  sequence: number;
+  status: "active" | "archived";
+}
+
+export interface WordPage {
+  total: number;
+  items: WordAdminOut[];
+}
+
+export interface WordUpsertPayload {
+  word: string;
+  phonetic: string;
+  translation: string;
+  example_en: string;
+  example_cn: string;
+}
+
+/** 导入校验问题，可定位到第几条哪个词 */
+export interface ValidationIssueOut {
+  rule: string;
+  field: string;
+  message: string;
+}
+
+export interface ImportResult {
+  applied: boolean;
+  books_created: number;
+  books_updated: number;
+  words_created: number;
+  words_updated: number;
+  words_total: number;
+  issues: ValidationIssueOut[];
+}
+
+/** 导入失败时后端返回的结构化 detail */
+export interface ImportFailureDetail {
+  message: string;
+  issues: ValidationIssueOut[];
+}

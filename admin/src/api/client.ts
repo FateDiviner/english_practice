@@ -17,11 +17,14 @@ export function clearToken(): void {
 
 export class RequestError extends Error {
   readonly status: number;
+  /** 后端的原始 detail：可能是字符串，也可能是结构化对象（如导入的逐条 issues） */
+  readonly detail: unknown;
 
-  constructor(message: string, status = 0) {
+  constructor(message: string, status = 0, detail?: unknown) {
     super(message);
     this.name = "RequestError";
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -40,13 +43,21 @@ http.interceptors.request.use((config) => {
 
 http.interceptors.response.use(
   (response) => response,
-  (error: { response?: { status?: number; data?: { detail?: string } } }) => {
+  (error: { response?: { status?: number; data?: { detail?: unknown } } }) => {
     const status = error.response?.status ?? 0;
-    const detail =
-      error.response?.data?.detail ?? (status === 0 ? "网络连接失败" : "请求失败");
+    const raw = error.response?.data?.detail;
+    // detail 可能是对象（导入失败时带逐条 issues），消息只取其中可读的部分
+    const message =
+      typeof raw === "string"
+        ? raw
+        : raw && typeof raw === "object" && "message" in raw
+          ? String((raw as { message: unknown }).message)
+          : status === 0
+            ? "网络连接失败"
+            : "请求失败";
     // 凭证失效一律退回登录页，绝不带着失效令牌继续操作
     if (status === 401 || status === 403) clearToken();
-    return Promise.reject(new RequestError(detail, status));
+    return Promise.reject(new RequestError(message, status, raw));
   }
 );
 
