@@ -18,35 +18,35 @@
 english_practice/
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
-├── core/               共享核心层（仓库根 pip install -e . 安装）
-│   ├── models/          全部 ORM 模型，两端共用同一套表结构
-│   ├── services/        账号体系、数据质量校验、连续打卡推导
+├── core/                  共享核心层（仓库根 pip install -e . 安装，两端共用）
+│   ├── models/            全部 ORM 模型，两端共用同一套表结构
+│   ├── services/          账号体系、数据质量校验、连续打卡推导
 │   └── db / config / security / constants / deps
-├── backend/             用户端 API（独立进程）
-│   ├── app/
-│   │   ├── api/           路由控制器（入参校验 + 响应格式化）
-│   │   ├── services/      业务逻辑（遗忘曲线调度、练习结算、认证迁移、看板统计）
-│   │   ├── ai/            Prompt 编排、纠错区块解析、SSE 流式客户端
-│   │   ├── models/        ORM 模型与参数化查询
-│   │   └── schemas/       Pydantic 请求 / 响应契约
-│   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
-│   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             3183 项自动化测试
-├── admin_api/          管理端 API（独立进程，端口 8100）
-│   ├── api/             管理员认证、用户管理、审计
-│   ├── services/        封禁 / 删除等管理逻辑，与用户端业务互不混用
-│   ├── scripts/         create_admin CLI
-│   └── tests/           管理端测试
-├── shared/design/    设计 Token（用户端与管理端共用的唯一来源）
-├── admin/            管理端：独立 Vite 工程，端口 5174，强制 require_admin
-└── frontend/
-    └── src/
-        ├── api/           HTTP 客户端与 SSE 流解析
-        ├── stores/        Zustand：认证 / 全局设置 / 练习状态机
-        ├── hooks/         发音、键盘流契约
-        ├── components/    学习看板等复合区块
-        ├── pages/         登录、词书中心、默写、错题本、AI 伴学
-        └── styles/        引用 shared/design 的 Token 与全局样式
+├── shared/design/         设计 Token（用户端与管理端共用的唯一来源）
+├── user/                  用户端
+│   ├── backend/           用户端 API（独立进程，端口 8000）
+│   │   ├── app/             FastAPI 应用
+│   │   │   ├── api/           路由控制器（入参校验 + 响应格式化）
+│   │   │   ├── services/      业务逻辑（遗忘曲线调度、练习结算、认证迁移、看板统计）
+│   │   │   ├── ai/            Prompt 编排、纠错区块解析、SSE 流式客户端
+│   │   │   └── schemas/       Pydantic 请求 / 响应契约
+│   │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
+│   │   ├── scripts/init_db.py 建表 + 词书导入（幂等）
+│   │   └── tests/             3180 项自动化测试
+│   └── frontend/          独立 Vite 工程，端口 5173
+│       └── src/
+│           ├── api/           HTTP 客户端与 SSE 流解析
+│           ├── stores/        Zustand：认证 / 全局设置 / 练习状态机
+│           ├── hooks/         发音、键盘流契约
+│           ├── components/    学习看板等复合区块
+│           ├── pages/         登录、词书中心、默写、错题本、AI 伴学
+│           └── styles/        引用 shared/design 的 Token 与全局样式
+└── admin/                 管理端
+    ├── backend/           管理端 API（独立进程，端口 8100）
+    │   ├── app/             FastAPI 应用：管理员认证、用户管理、词库管理、审计
+    │   ├── scripts/         create_admin CLI
+    │   └── tests/           60 项管理端测试
+    └── frontend/          独立 Vite 工程，端口 5174，强制 require_admin
 ```
 
 ## 快速开始
@@ -54,47 +54,48 @@ english_practice/
 ### 1. 后端
 
 ```bash
-cd backend
+cd user/backend
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt     # Windows
-# source .venv/bin/activate && pip install -r requirements.txt   # macOS / Linux
+.venv/Scripts/python -m pip install -r requirements.txt     # Windows
+# source .venv/bin/activate && python -m pip install -r requirements.txt   # macOS / Linux
 
 cp .env.example .env      # 填入 MySQL 连接串与 AI 三项配置
 .venv/Scripts/python -m scripts.init_db           # 建表 + 导入 313 词
-.venv/Scripts/uvicorn app.main:app --reload --port 8000
+.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### 2. 前端
 
 ```bash
-cd frontend
+cd user/frontend
 npm install
 npm run dev                # http://localhost:5173，/api 已代理至 :8000
 ```
 
 ### 3. 管理端（可选）
 
-管理端前端与后端**都与用户端分离**：前端 `admin/`（端口 5174）、后端
-`admin_api/`（端口 8100），两端共用 `core/` 的表结构与同一个数据库账号，
-因此可以只把 `admin_api` 与 `admin/` 放在内网，公网只暴露用户端。
+管理端前端与后端**都与用户端分离**：前端 `admin/frontend/`（端口 5174）、后端
+`admin/backend/`（端口 8100），两端共用 `core/` 的表结构与同一个数据库账号，
+因此可以只把 `admin/` 整个放在内网，公网只暴露 `user/`。
 
 ```bash
-cd admin
+# 管理端前端（以下命令均以仓库根为当前目录）
+cd admin/frontend
 npm install
 npm run dev                # http://localhost:5174，/api 已代理至管理端 :8100
 
-# 3. 管理端后端（与用户端分进程，共用 core 的同一套表结构）
-cd admin_api
-../backend/.venv/Scripts/python -m uvicorn admin_api.main:app --app-dir .. --port 8100
+# 管理端后端（与用户端分进程，共用 core 的同一套表结构，沿用同一个 venv）
+cd admin/backend
+../../user/backend/.venv/Scripts/python -m uvicorn app.main:app --port 8100
 
 # 管理员注册走 /api/admin/auth/register：
 #   配置了 ADMIN_INVITE_CODE  -> 必须带正确邀请码
 #   未配置邀请码             -> 只有系统里一个管理员都没有时才允许注册第一个
 # 忘记密码时的最后出路（不经过注册口）：
-../backend/.venv/Scripts/python -m scripts.create_admin <用户名>
+../../user/backend/.venv/Scripts/python -m scripts.create_admin <用户名>
 ```
 
-## 环境变量 (`backend/.env`)
+## 环境变量 (`user/backend/.env`)
 
 | 变量 | 说明 |
 | :--- | :--- |
@@ -118,20 +119,25 @@ cd admin_api
 ## 测试与门禁
 
 ```bash
-# 后端：3183 项测试（默认跑临时 SQLite，零配置）
-cd backend && .venv/Scripts/python -m pytest
+# 以下命令均以仓库根为当前目录
 
-# 后端：整套测试改跑真实 MySQL（需先建好 <库名>_test）
-RUN_MYSQL_TESTS=1 .venv/Scripts/python -m pytest
+# 用户端后端：3180 项测试（默认跑临时 SQLite，零配置）
+cd user/backend && .venv/Scripts/python -m pytest
+
+# 同上，但整套改跑真实 MySQL（需先建好 <库名>_test）
+cd user/backend && RUN_MYSQL_TESTS=1 .venv/Scripts/python -m pytest
 
 # 真实大模型连通性冒烟（唯一会调用付费接口的脚本）
-.venv/Scripts/python -X utf8 -m scripts.ai_smoke
+cd user/backend && .venv/Scripts/python -X utf8 -m scripts.ai_smoke
 
-# 管理端后端：注册规则、权限边界、封禁与审计
-cd admin_api && ../backend/.venv/Scripts/python -m pytest
+# 管理端后端：60 项测试，覆盖注册规则、权限边界、封禁与审计（沿用同一个 venv）
+cd admin/backend && ../../user/backend/.venv/Scripts/python -m pytest
 
-# 前端：组件测试（jsdom）+ lint 0 error + 类型检查 + 构建
-cd frontend && npm test && npm run lint && npm run build
+# 用户端前端：组件测试（jsdom）+ lint 0 error + 类型检查 + 构建
+cd user/frontend && npm test && npm run lint && npm run build
+
+# 管理端前端
+cd admin/frontend && npm test && npm run lint && npm run build
 ```
 
 `RUN_MYSQL_TESTS=1` 时，连接串由 `.env` 的 `DATABASE_URL` 自动把库名改写为

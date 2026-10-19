@@ -1,42 +1,22 @@
-# 管理端（admin）
+# 管理端 (admin)
 
-独立部署的管理界面，与用户端 `frontend/` 共用后端与设计 Token，但工程、构建与
-部署完全分离。
+管理端的前后端都在这个目录下，与用户端 `user/` 完全平行、完全独立。
 
-## 与用户端的边界
+| 目录 | 说明 | 端口 |
+| :--- | :--- | :--- |
+| `admin/frontend/` | 管理界面（Vite + React + TS） | `5174` |
+| `admin/backend/` | 管理端 API（FastAPI，包名 `app`） | `8100` |
 
-| 项 | 处理 |
-| :--- | :--- |
-| 后端接口 | 共用 `/api/*`，管理接口一律在 `/api/admin/*` 且强制 `require_admin` |
-| 设计 Token | 引用 `shared/design/tokens.css`，两端同一份，改动只需一处 |
-| 类型定义 | 各写各的，管理端 DTO 与用户端本就不同，不引入跨工程构建耦合 |
-| 端口 | 开发期 `5174`（用户端 `5173`），互不占用 |
+两端共用仓库根的 `core/`（表结构、鉴权、数据质量规则）与 `shared/design/`（设计
+Token），但进程、构建产物与部署单元都各自独立，因此可以只把整个 `admin/` 放在
+内网，公网只暴露 `user/`。
 
-## 启动
-
-```bash
-cd admin
-npm install
-npm run dev          # http://localhost:5174，/api 代理至 :8000
-```
-
-生产部署时用 `VITE_API_BASE` 指定后端地址：
+管理端后端不自带 venv，直接沿用用户端后端的：
 
 ```bash
-VITE_API_BASE=https://api.example.com npm run build
+cd admin/backend
+../../user/backend/.venv/Scripts/python -m uvicorn app.main:app --port 8100
+../../user/backend/.venv/Scripts/python -m pytest
 ```
 
-## 成为管理员
-
-首个管理员必须走 CLI，不提供网页注册入口：
-
-```bash
-cd backend
-python -m scripts.create_admin <用户名>
-```
-
-## 门禁
-
-```bash
-npm run lint && npm run typecheck && npm test && npm run build
-```
+细节见 [frontend/README.md](frontend/README.md)；全局约定见仓库根 [README.md](../README.md)。
