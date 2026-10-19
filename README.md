@@ -50,7 +50,7 @@ python -m venv .venv
 
 cp .env.example .env      # 填入 MySQL 连接串与 AI 三项配置
 .venv/Scripts/python -m scripts.init_db           # 建表 + 导入 313 词
-.venv/Scripts/uvicorn app.main:app --reload --port 8000
+.venv/Scripts/python main.py                   # 默认 127.0.0.1:8000，热重载
 ```
 
 ### 2. 前端
