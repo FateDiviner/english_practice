@@ -9,19 +9,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# 共享层同时被 backend 与 admin_api 使用，配置文件的相对基准不能再靠 __file__
-# 往上一级猜（那样从 core/ 看是仓库根，backend/.env 会被漏掉，静默回退到
-# SQLite 与默认密钥）。这里显式按优先级解析，两条路径都存在时以 backend 为准。
+# 共享层同时被 user/backend 与 admin/backend 使用，配置文件的相对基准不能再靠
+# __file__ 往上一级猜（那样从 core/ 看是仓库根，user/backend/.env 会被漏掉，静默
+# 回退到 SQLite 与默认密钥）。这里显式按优先级解析，两条路径都存在时以用户端为准。
 ENV_FILE = next(
     (
         candidate
         for candidate in (
-            PROJECT_ROOT / "backend" / ".env",
+            PROJECT_ROOT / "user" / "backend" / ".env",
             PROJECT_ROOT / ".env",
         )
         if candidate.exists()
     ),
-    PROJECT_ROOT / "backend" / ".env",
+    PROJECT_ROOT / "user" / "backend" / ".env",
 )
 
 

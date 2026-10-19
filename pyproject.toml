@@ -17,6 +17,6 @@ dependencies = [
   "bcrypt>=4.0",
 ]
 
-# 只打包共享层：backend/ 与 admin-api/ 仍以各自目录为运行入口
+# 只打包共享层：user/backend/ 与 admin/backend/ 仍以各自目录为运行入口
 [tool.setuptools]
 packages = ["core", "core.models", "core.services"]

@@ -1,5 +1,5 @@
 """共享核心层：数据模型、连接、配置与账号/校验逻辑。
 
-用户端 backend 与管理端 admin-api 都 import 这一层，
+用户端 user/backend 与管理端 admin/backend 都 import 这一层，
 保证两边永远面对同一套表结构与同一份数据质量规则。
 """

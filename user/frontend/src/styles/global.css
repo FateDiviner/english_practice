@@ -1,0 +1,129 @@
+/* ==========================================================================
+   设计 Token 与全局样式
+   规范约束：全部色彩经变量引用，严禁散落硬编码 HEX；深浅色双套 Token。
+   ========================================================================== */
+
+@import "../../../../shared/design/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: var(--font-body);
+  line-height: 1.6;
+  transition: background-color var(--duration-mid) ease,
+    color var(--duration-mid) ease;
+}
+
+/* 单词展示：字号醒目，IPA 字形清晰 */
+.word-display {
+  font-size: var(--font-word);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.phonetic-display {
+  font-family: var(--font-ipa);
+  font-size: var(--font-phonetic);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+/* ---------------------------------------------------------------------------
+   校验动效：仅使用 transform / opacity，严禁触发 Reflow 的布局属性插值
+   --------------------------------------------------------------------------- */
+@keyframes ep-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes ep-flash {
+  0% { box-shadow: 0 0 0 0 var(--color-success-soft); }
+  50% { box-shadow: 0 0 0 6px var(--color-success-soft); }
+  100% { box-shadow: 0 0 0 0 var(--color-success-soft); }
+}
+
+@keyframes ep-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.anim-shake {
+  animation: ep-shake var(--duration-mid) ease;
+}
+
+.anim-flash {
+  animation: ep-flash 600ms ease-out;
+}
+
+.anim-fade-up {
+  animation: ep-fade-up var(--duration-mid) ease-out;
+}
+
+/* 逐字比对结果着色 */
+.diff-same { color: var(--text-1); }
+.diff-wrong,
+.diff-extra {
+  color: var(--color-danger);
+  text-decoration: underline wavy var(--color-danger);
+  text-underline-offset: 4px;
+}
+.diff-missing {
+  color: var(--color-success);
+  border-bottom: 2px solid var(--color-success);
+}
+
+/* 键盘焦点可见，保证盲打时始终知道自己在哪里 */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* 滚动条与文本选择，深浅色一致克制 */
+::selection {
+  background: var(--color-primary-soft);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--border-radius-md);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,7 +1,7 @@
 """连续打卡的推导：日历口径与反推计算。
 
 这两个函数只依赖 practice_sessions 一张表，却被 core 的账号迁移逻辑用到，
-因此必须放在 core——放在 backend 会让 core 反向依赖 backend。
+因此必须放在 core——放在 user/backend 会让 core 反向依赖用户端后端。
 """
 
 from __future__ import annotations
