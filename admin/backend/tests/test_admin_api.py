@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,11 @@ from app.services.user_admin_service import ADMIN_ROLE
 from core.config import get_settings
 from core.constants import USER_STATUS_ACTIVE, USER_STATUS_BANNED
 from core.models.audit import AuditLog
+from core.models.chat import ChatMessage
+from core.models.record import UserWordRecord
+from core.models.session import PracticeSessionRecord
+from core.models.word import Word
+from core.models.wordbook import WordBook
 from core.models.user import User
 from tests.conftest import unique
 
@@ -378,6 +384,64 @@ class TestDeleteUser:
         # 旧令牌随账号一起失效
         me = client.get("/api/admin/auth/me", headers=member["headers"])
         assert me.status_code == 401
+
+    def test_delete_user_with_practice_data_cascades(
+        self, client: TestClient, admin: dict, member: dict, db: Session
+    ):
+        """回归：有练习数据的用户必须能删干净。
+
+        原实现缺 cascade="all, delete-orphan"，删除时 ORM 把已加载的子对象
+        当孤儿、转而 UPDATE 其外键为 NULL；而 user_id 是 NOT NULL，
+        于是 IntegrityError，管理端删除用户直接失败。
+        原 test_delete_removes_user_and_cascades 用的是空用户，测不到这条路径。
+        """
+        uid = member["user_id"]
+        # 自建词书与词条：测试库无 seed，不能假设内置词书存在
+        book = WordBook(
+            code=unique("book"),
+            title="删除回归专用",
+            description="删除用户回归用例",
+            difficulty="test",
+        )
+        db.add(book)
+        db.flush()
+        word = Word(word="probe", translation="n. 探针", wordbook_id=book.id, sequence=0)
+        db.add(word)
+        db.flush()
+
+        db.add(UserWordRecord(user_id=uid, word_id=word.id, status="learning"))
+        db.add(
+            PracticeSessionRecord(
+                user_id=uid,
+                wordbook_id=book.id,
+                mode="dictation",
+                total=1,
+                correct_count=1,
+                wrong_count=0,
+                duration_ms=100,
+                practiced_on=date(2026, 10, 19),
+            )
+        )
+        db.add(ChatMessage(user_id=uid, role="user", content="hello"))
+        db.commit()
+
+        response = client.delete(f"/api/admin/users/{uid}", headers=admin["headers"])
+
+        assert response.status_code == 200, response.text
+        assert response.json()["affected_rows"] == 3
+
+        _reopen(db)
+        assert db.get(User, uid) is None
+        # 子数据必须被真正删掉，而不是外键被置空后残留
+        for model in (UserWordRecord, PracticeSessionRecord, ChatMessage):
+            assert (
+                db.scalar(select(model).where(model.user_id == uid)) is None
+            ), f"{model.__name__} 未被级联删除"
+
+        # 清理自建词书，避免影响其它用例
+        db.query(Word).where(Word.wordbook_id == book.id).delete()
+        db.query(WordBook).where(WordBook.id == book.id).delete()
+        db.commit()
 
     def test_delete_unknown_404(self, client: TestClient, admin: dict):
         assert (
