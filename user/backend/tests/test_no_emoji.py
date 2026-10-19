@@ -51,6 +51,7 @@ SOURCE_SUFFIXES = {
     ".cfg",
     ".txt",
     ".example",
+    ".sh",
 }
 
 
