@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.constants import ROLE_ADMIN
 from app.models.chat import ChatMessage
 from app.models.record import UserWordRecord
 from app.models.session import PracticeSessionRecord
@@ -40,6 +41,17 @@ def create_user(db: Session, username: str, password: str, is_guest: bool = Fals
     return user
 
 
+def has_admin(db: Session) -> bool:
+    """系统里是否已有管理员。
+
+    游客永远是 user，不算数——否则一个游客转正就能拿到管理员。
+    """
+    existing = db.scalar(
+        select(User.id).where(User.role == ROLE_ADMIN, User.is_guest.is_(False)).limit(1)
+    )
+    return existing is not None
+
+
 def register(db: Session, username: str, password: str, guest_id: int | None = None) -> User:
     """注册正式账号，成功后将游客期数据迁移至该账号。"""
     if get_user_by_username(db, username):
@@ -48,6 +60,14 @@ def register(db: Session, username: str, password: str, guest_id: int | None = N
         raise AuthError("用户名至少 3 个字符")
 
     user = create_user(db, username.strip(), password)
+
+    # 首个注册者自动成为管理员：走注册口引导，比要求跑脚本顺手得多。
+    # 游客走的是 create_guest，不会经过这里，因此永远不会拿到管理员。
+    # 并发注册的竞态（两个请求同时看到「无管理员」）在本地单机场景可接受，
+    # 且后续管理员可在用户管理里调整角色，不需要引入锁。
+    if not has_admin(db):
+        user.role = ROLE_ADMIN
+
     migrated = False
     if guest_id is not None:
         migrated = migrate_guest_data(db, guest_id, user)

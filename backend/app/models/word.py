@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.constants import STATUS_ACTIVE
 from app.db import Base
 
 
@@ -24,6 +25,10 @@ class Word(Base):
     translation: Mapped[str] = mapped_column(Text, default="", nullable=False)
     example_en: Mapped[str] = mapped_column(Text, default="", nullable=False)
     example_cn: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # active: 可用 / archived: 已下架。物理删除仅在零用户引用时允许
+    status: Mapped[str] = mapped_column(
+        String(16), default=STATUS_ACTIVE, index=True, nullable=False
+    )
     sequence: Mapped[int] = mapped_column(default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False

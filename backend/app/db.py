@@ -54,8 +54,55 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+# 既有表里必须存在但可能缺失的列：create_all 只建新表、不给老表加列，
+# 本项目刻意不用 Alembic，因此新增字段一律在这里幂等补齐。
+# DDL 写成方言无关的通用类型，SQLite 与 MySQL 都能吃下。
+REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
+    "users": {
+        "role": "VARCHAR(16) DEFAULT 'user' NOT NULL",
+        "status": "VARCHAR(16) DEFAULT 'active' NOT NULL",
+    },
+    "wordbooks": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+    "words": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+}
+
+
+def _ensure_columns(target: Engine | None = None) -> int:
+    """给已存在的表补齐缺失列与索引，返回实际执行的 DDL 语句数。
+
+    索引也要补：ORM 里声明了 index=True，但 create_all 不会给已有表补索引，
+    只补列会让模型与实际表结构长期不一致。
+
+    target 仅用于测试：传入一个临时引擎即可验证「旧版表结构被补齐」这条路径。
+    """
+    from sqlalchemy import inspect, text
+
+    target = target or engine
+    inspector = inspect(target)
+    tables = set(inspector.get_table_names())
+    applied = 0
+    with target.begin() as conn:
+        for table, columns in REQUIRED_COLUMNS.items():
+            if table not in tables:
+                continue
+            existing = {column["name"] for column in inspector.get_columns(table)}
+            for name, ddl in columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+                    applied += 1
+                # 列名与 SQLAlchemy 默认命名约定一致：ix_{表名}_{列名}
+                index_name = f"ix_{table}_{name}"
+                if index_name not in {index["name"] for index in inspector.get_indexes(table)}:
+                    conn.execute(
+                        text(f"CREATE INDEX {index_name} ON {table} ({name})")
+                    )
+                    applied += 1
+    return applied
+
+
 def init_db() -> None:
-    """创建全部表结构（幂等）。"""
+    """创建全部表结构并补齐缺失列（幂等）。"""
     from app import models  # noqa: F401  确保模型完成注册
 
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()

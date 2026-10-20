@@ -27,6 +27,10 @@ class UserInfo(BaseModel):
     id: int
     username: str
     is_guest: bool
+    # user: 普通用户 / admin: 管理员，前端据此决定是否显示管理入口
+    role: str = "user"
+    # active: 正常 / banned: 封禁
+    status: str = "active"
     active_wordbook_id: int | None = None
     consecutive_days: int = 0
     created_at: datetime
