@@ -41,6 +41,26 @@
   --font-body: 15px;
   --font-caption: 13px;
 
+  /* 间距刻度：全站只用这几档，禁止散落 13px / 17px 这类魔法数 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* 布局结构。移动端底部 Tab Bar 要占位，所以内容区底部留出等高空间 */
+  --layout-sidebar-w: 224px;
+  --layout-sidebar-collapsed: 64px;
+  --layout-tabbar-h: 56px;
+  --layout-content-max: 1200px;
+  --layout-gutter: 20px;
+
+  /* 行高压缩：管理端表格用 --row-h-compact，阅读类内容用 --row-h-comfortable */
+  --row-h-compact: 40px;
+  --row-h-comfortable: 52px;
+
   /* IPA 需要覆盖扩展音标字符的字体族 */
   --font-ipa: "Charis SIL", "Doulos SIL", "Gentium Plus", "Segoe UI Symbol",
     "Segoe UI", "Noto Sans", system-ui, sans-serif;
@@ -188,6 +208,225 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ==========================================================================
+   应用外壳：桌面左侧栏 + 移动底部 Tab Bar
+   断点 768px。移动端一律用底部 Tab Bar，因为它落在拇指可达区；
+   桌面侧栏能一次摊开全部入口，管理页有 6 个时顶部导航已经挤不下了。
+   ========================================================================== */
+
+.shell {
+  min-height: 100%;
+  display: flex;
+}
+
+/* 侧栏：移动端隐藏 */
+.sidebar {
+  display: none;
+}
+
+.shell-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell-content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--layout-content-max);
+  margin: 0 auto;
+  padding: var(--space-5) var(--layout-gutter) var(--space-7);
+}
+
+/* 底部 Tab Bar：仅移动端 */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  height: calc(var(--layout-tabbar-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  /* iPhone 底部横条区域要能点，别被遮住 */
+  box-shadow: 0 -1px 0 var(--border-color);
+}
+
+.tabbar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px; /* 触控目标不低于 44px，WCAG 移动端下限 */
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--font-caption);
+  cursor: pointer;
+  transition: color var(--duration-fast) ease;
+}
+
+.tabbar-item[aria-current="page"] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.tabbar-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* 侧栏条目 */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-subtle);
+  color: var(--text-1);
+}
+
+.sidebar-item[aria-current="page"] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebar-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.sidebar-section {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  color: var(--text-3);
+  font-size: var(--font-caption);
+  letter-spacing: 0.06em;
+}
+
+/* 管理端卡片列表：窄屏替代表格用 */
+.record-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.record-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+}
+
+.record-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.record-card__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-caption);
+  color: var(--text-2);
+}
+
+.record-card__label {
+  color: var(--text-3);
+  min-width: 5em;
+}
+
+.record-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-color);
+}
+
+/* 统计数字：等宽数字让进度、计数在列表里纵向对齐 */
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 移动端顶栏：侧栏隐藏后动作按钮要有去处，桌面端由侧栏底部承担 */
+.mobile-header {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .mobile-header {
+    display: none;
+  }
+}
+
+/* 桌面侧栏 */
+@media (min-width: 768px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: var(--layout-sidebar-w);
+    height: 100vh;
+    padding: var(--space-4) var(--space-3);
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+  }
+
+  .tabbar {
+    display: none;
+  }
+
+  .shell-content {
+    padding-bottom: var(--space-7);
+  }
+}
+
+/* 移动端：侧栏让位给底部 Tab Bar，内容区要给 Tab Bar 留出高度，
+   否则最后一屏会被挡住——这是移动端最常见的漏底问题 */
+@media (max-width: 767px) {
+  .shell-content {
+    padding: var(--space-4) var(--space-3)
+      calc(var(--layout-tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--space-4));
+  }
+}
+
+/* 触控目标：移动端所有可点元素不低于 44px，避免误触 */
+@media (pointer: coarse) {
+  button,
+  a,
+  .arco-btn {
+    min-height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

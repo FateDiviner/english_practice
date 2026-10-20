@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,10 +45,13 @@ describe("管理入口按角色显示", () => {
   });
 
   afterEach(() => {
-    // Arco 的 Modal / Message 走独立 portal，不清会泄漏到下一个用例
+    // 侧栏与底部 Tab Bar 会让同一文案渲染两次，跨用例残留会直接让
+    // queryByText 判错，所以这里必须显式清干净
+    cleanup();
     document.querySelectorAll(".arco-modal, .arco-modal-mask, .arco-message").forEach((node) => {
       node.remove();
     });
+    useAuthStore.setState({ user: null, ready: true });
   });
 
   it("管理员看得到全部管理入口", () => {
@@ -56,11 +59,12 @@ describe("管理入口按角色显示", () => {
     renderAt("/");
 
     for (const label of ["用户管理", "词书管理", "知识库", "检索调试", "审计日志"]) {
-      expect(screen.getByText(label)).toBeTruthy();
+      // 侧栏与底部 Tab Bar 各渲染一次，CSS 在断点上二选一
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
     // 原有的用户功能入口不能被挤掉
-    expect(screen.getByText("词书中心")).toBeTruthy();
-    expect(screen.getByText("AI 伴学")).toBeTruthy();
+    expect(screen.getAllByText("词书中心").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AI 伴学").length).toBeGreaterThan(0);
   });
 
   it("普通用户看不到任何管理入口", () => {
@@ -70,13 +74,69 @@ describe("管理入口按角色显示", () => {
     expect(screen.queryByText("用户管理")).toBeNull();
     expect(screen.queryByText("词书管理")).toBeNull();
     expect(screen.queryByText("审计日志")).toBeNull();
-    expect(screen.getByText("词书中心")).toBeTruthy();
+    expect(screen.getAllByText("词书中心").length).toBeGreaterThan(0);
   });
 
   it("游客也拿不到管理入口", () => {
     useAuthStore.setState({ user: { ...PLAIN, is_guest: true }, ready: true });
     renderAt("/");
     expect(screen.queryByText("用户管理")).toBeNull();
+  });
+});
+
+describe("移动端底部 Tab Bar", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("侧栏与底部 Tab 各渲染一次，靠 CSS 在断点上二选一", () => {
+    useAuthStore.setState({ user: PLAIN, ready: true });
+    renderAt("/");
+
+    const sidebar = document.querySelector(".sidebar");
+    const tabbar = document.querySelector(".tabbar");
+    expect(sidebar).toBeTruthy();
+    expect(tabbar).toBeTruthy();
+    // 两者都挂载，由 global.css 的 768px 断点决定显示哪一个；
+    // 用 JS 媒体查询会在首屏闪一下，所以刻意不做
+    expect(sidebar?.querySelectorAll(".sidebar-item").length).toBeGreaterThan(0);
+    expect(tabbar?.querySelectorAll(".tabbar-item").length).toBeGreaterThan(0);
+  });
+
+  it("底部 Tab 不超过五项，否则 44px 触控目标会被挤破", () => {
+    useAuthStore.setState({ user: ADMIN, ready: true });
+    renderAt("/");
+    const tabs = document.querySelectorAll(".tabbar .tabbar-item");
+    expect(tabs.length).toBeLessThanOrEqual(5);
+  });
+
+  it("管理员的底部 Tab 多一个管理入口，普通用户没有", () => {
+    useAuthStore.setState({ user: ADMIN, ready: true });
+    const admin = renderAt("/");
+    const labels = Array.from(
+      document.querySelectorAll(".tabbar .tabbar-item span")
+    ).map((node) => node.textContent);
+    expect(labels).toContain("管理");
+    cleanup();
+
+    useAuthStore.setState({ user: PLAIN, ready: true });
+    renderAt("/");
+    const plainLabels = Array.from(
+      document.querySelectorAll(".tabbar .tabbar-item span")
+    ).map((node) => node.textContent);
+    expect(plainLabels).not.toContain("管理");
+    expect(plainLabels).toEqual(["词书中心", "默写练习", "错题本", "AI 伴学"]);
+    admin.unmount?.();
+  });
+
+  it("管理页在移动端有二级导航，用户页没有", () => {
+    useAuthStore.setState({ user: ADMIN, ready: true });
+    renderAt("/admin/users");
+    expect(document.querySelector('[aria-label="管理子导航"]')).toBeTruthy();
+
+    cleanup();
+    renderAt("/");
+    expect(document.querySelector('[aria-label="管理子导航"]')).toBeNull();
   });
 });
 

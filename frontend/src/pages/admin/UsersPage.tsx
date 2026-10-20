@@ -8,7 +8,6 @@ import {
   Popconfirm,
   Select,
   Space,
-  Table,
   Tag,
   Tooltip,
 } from "@arco-design/web-react";
@@ -19,6 +18,8 @@ import {
   fetchUsers,
   updateUser,
 } from "@/api/admin";
+import RecordCard from "@/components/RecordCard";
+import ResponsiveList from "@/components/ResponsiveList";
 import { toMessage } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
 import type { AdminUser, UserRole, UserStatus } from "@/types";
@@ -191,10 +192,66 @@ export default function UsersPage() {
         <Button onClick={() => void load()}>刷新</Button>
       </Space>
 
-      <Table
+      <ResponsiveList
         rowKey="id"
         loading={loading}
         data={items}
+        renderCard={(row) => (
+          <RecordCard
+            title={row.username}
+            tags={[
+              row.is_guest && <Tag key="g" size="small">[游客]</Tag>,
+              isSelf(row) && <Tag key="me" size="small" color="arcoblue">[我]</Tag>,
+              <Tag key="r" size="small" color={row.role === "admin" ? "orangered" : "gray"}>
+                {ROLE_LABEL[row.role]}
+              </Tag>,
+              <Tag key="s" size="small" color={row.status === "banned" ? "red" : "green"}>
+                {STATUS_LABEL[row.status]}
+              </Tag>,
+            ]}
+            fields={[
+              { label: "练习次数", value: row.practice_count },
+              { label: "最近活跃", value: row.last_practiced_at ?? "从未练习" },
+              { label: "注册时间", value: row.created_at.slice(0, 10) },
+            ]}
+            actions={
+              <Space size={4} wrap>
+                <Tooltip content={isSelf(row) ? "不能修改自己的角色" : ""}>
+                  <Button
+                    size="small"
+                    disabled={isSelf(row)}
+                    onClick={() => void toggleRole(row)}
+                  >
+                    {row.role === "admin" ? "降为普通用户" : "升为管理员"}
+                  </Button>
+                </Tooltip>
+                <Tooltip content={isSelf(row) ? "不能封禁自己" : ""}>
+                  <Button
+                    size="small"
+                    status={row.status === "active" ? "danger" : "default"}
+                    disabled={isSelf(row)}
+                    onClick={() => void toggleStatus(row)}
+                  >
+                    {row.status === "active" ? "封禁" : "启用"}
+                  </Button>
+                </Tooltip>
+                <Tooltip content={isSelf(row) ? "不能删除自己" : ""}>
+                  <Popconfirm
+                    title="删除该用户及其全部练习数据？"
+                    okText="确认删除"
+                    cancelText="取消"
+                    disabled={isSelf(row)}
+                    onOk={() => void remove(row)}
+                  >
+                    <Button size="small" status="danger" disabled={isSelf(row)}>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                </Tooltip>
+              </Space>
+            }
+          />
+        )}
         pagination={{
           total,
           pageSize: PAGE_SIZE,

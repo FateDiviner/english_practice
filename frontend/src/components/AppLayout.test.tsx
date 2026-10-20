@@ -84,7 +84,8 @@ describe("游客数据风险提示", () => {
     renderLayout();
 
     expect(screen.getByTestId("page")).toBeTruthy();
-    expect(screen.getByText("词书中心")).toBeTruthy();
+    // 导航项在侧栏与底部 Tab Bar 各渲染一次，靠 CSS 在断点上二选一
+    expect(screen.getAllByText("词书中心").length).toBeGreaterThan(0);
   });
 });
 
@@ -92,7 +93,7 @@ describe("学习数据备份入口", () => {
   it("顶栏提供备份入口并可打开弹窗", async () => {
     renderLayout();
 
-    fireEvent.click(screen.getByRole("button", { name: "学习数据备份" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "学习数据备份" })[0]);
 
     expect(await screen.findByText("学习数据备份")).toBeTruthy();
     expect(screen.getByText(/换设备、换账号或误清浏览器数据/)).toBeTruthy();
@@ -102,6 +103,6 @@ describe("学习数据备份入口", () => {
     useAuthStore.setState({ user: MEMBER });
     renderLayout();
 
-    expect(screen.getByRole("button", { name: "学习数据备份" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "学习数据备份" }).length).toBeGreaterThan(0);
   });
 });
