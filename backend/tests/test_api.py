@@ -164,12 +164,14 @@ class TestWordbooks:
         for book in books:
             for key in ("id", "code", "title", "description", "difficulty", "total_words"):
                 assert key in book
-            assert book["total_words"] > 0
+            # 管理端新建但尚未导词的书也是 active，会出现在这里，词数为 0 属正常
 
-        progress = auth_client.get(f"/api/wordbooks/{books[0]['id']}/progress")
+        # 进度断言挑一本真正有词的书，否则分母是 0 什么也验不到
+        stocked = next(book for book in books if book["total_words"] > 0)
+        progress = auth_client.get(f"/api/wordbooks/{stocked['id']}/progress")
         assert progress.status_code == 200
         body = progress.json()
-        assert body["total_words"] == books[0]["total_words"]
+        assert body["total_words"] == stocked["total_words"]
         assert body["untouched"] == body["total_words"], "初始应全部未学习"
 
     def test_missing_progress_404(self, auth_client: TestClient):

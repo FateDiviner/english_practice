@@ -24,7 +24,24 @@ def _build_engine(url: str) -> Engine:
         kwargs["connect_args"] = {"check_same_thread": False}
     else:
         kwargs["pool_recycle"] = 3600
-    return create_engine(url, **kwargs)
+    engine = create_engine(url, **kwargs)
+    if url.startswith("sqlite"):
+        _enable_sqlite_foreign_keys(engine)
+    return engine
+
+
+def _enable_sqlite_foreign_keys(target: Engine) -> None:
+    """SQLite 默认不强制外键，必须显式打开。
+
+    MySQL 的 InnoDB 默认强制，若测试环境不开，ON DELETE CASCADE / SET NULL
+    在测试里形同虚设，级联清理与审计外键置空都验不到真实行为。
+    """
+
+    @event.listens_for(target, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _record) -> None:  # pragma: no cover - 驱动回调
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 engine = _build_engine(settings.database_url)

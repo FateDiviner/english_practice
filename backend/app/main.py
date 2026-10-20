@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, chat, practice, stats, user, wordbooks
+from app.api.admin import audit as admin_audit
+from app.api.admin import users as admin_users
+from app.api.admin import words as admin_words
 from app.config import get_settings
 from app.db import init_db
 
@@ -56,3 +59,8 @@ app.include_router(practice.router)
 app.include_router(stats.router)
 app.include_router(user.router)
 app.include_router(chat.router)
+
+# 管理端路由：与用户端同进程共库，权限由 require_admin 逐路由把关
+app.include_router(admin_users.router)
+app.include_router(admin_words.router)
+app.include_router(admin_audit.router)

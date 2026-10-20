@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.constants import STATUS_ACTIVE
 from app.db import get_db
 from app.models.user import User
 from app.models.wordbook import WordBook
@@ -29,6 +30,9 @@ def _ensure_book(db: Session, wordbook_id: int) -> WordBook:
     book = db.get(WordBook, wordbook_id)
     if book is None:
         raise HTTPException(status_code=404, detail="词书不存在")
+    # 下架的词书不再开新练习；历史练习记录与错题本一律保留
+    if book.status != STATUS_ACTIVE:
+        raise HTTPException(status_code=404, detail="词书已下架")
     return book
 
 

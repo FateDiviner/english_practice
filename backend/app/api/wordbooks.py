@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.constants import STATUS_ACTIVE
 from app.db import get_db
 from app.models.user import User
 from app.models.wordbook import WordBook
@@ -18,8 +19,15 @@ router = APIRouter(prefix="/api/wordbooks", tags=["wordbooks"])
 
 @router.get("", response_model=list[WordBookOut])
 def list_wordbooks(db: Session = Depends(get_db)) -> list[WordBookOut]:
-    """列出全部内置官方词书。"""
-    rows = db.scalars(select(WordBook).order_by(WordBook.id)).all()
+    """列出全部内置官方词书。
+
+    只给可用的：已下架的词书对用户完全隐藏，但练习记录与备份一律保留。
+    """
+    rows = db.scalars(
+        select(WordBook)
+        .where(WordBook.status == STATUS_ACTIVE)
+        .order_by(WordBook.id)
+    ).all()
     return [WordBookOut.model_validate(row) for row in rows]
 
 
