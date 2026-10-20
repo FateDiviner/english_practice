@@ -14,11 +14,20 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import tempfile
 import uuid
 from pathlib import Path
 
 _USE_EXTERNAL_DB = os.environ.pop("RUN_MYSQL_TESTS", "") == "1"
+
+# pytest 的临时目录默认落在用户 Temp 下，而用户主目录可能含非 ASCII 字符。
+# faiss 的 C++ 文件写入走 ANSI 代码页，遇到中文路径会直接打不开文件，
+# 所以把临时根目录挪到项目内的纯 ASCII 路径。
+# 必须在导入任何用到 tmp_path 的模块之前设置。
+_PYTEST_TMP_ROOT = Path(__file__).resolve().parent.parent / ".pytest_tmp"
+_PYTEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
+os.environ["PYTEST_DEBUG_TEMPROOT"] = str(_PYTEST_TMP_ROOT)
 
 if _USE_EXTERNAL_DB:
     from app.config import get_settings as _get_settings  # 需在改写前读取 .env

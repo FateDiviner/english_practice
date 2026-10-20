@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # embedding 走与对话同一个 OpenAI 兼容供应商，不引入本地模型
     embedding_model: str = "text-embedding-v3"
     embedding_batch_size: int = 16
+    # text-embedding-v3 实测返回 1024 维；换模型必须同步改这里，
+    # 否则已有索引与新向量维度不一致，检索会直接崩
+    embedding_dimension: int = 1024
     embedding_timeout_seconds: float = 30.0
 
     # 可插拔：阶段列表全部走环境变量，增删阶段不改代码
@@ -55,8 +58,12 @@ class Settings(BaseSettings):
     rag_llm_rerank: bool = False
     rag_crag_max_rounds: int = 2
     rag_top_k: int = 6
-    # 最高分低于此值则不注入上下文，防止不相关内容污染答案
-    rag_score_threshold: float = 0.15
+    # 最高分低于此值则不注入上下文，防止不相关内容污染答案。
+    # 注意标度：RRF 融合分是 Σ 1/(60+rank)，单路第一名只有 0.0164，
+    # 三路同时第一也不过 0.049。默认 0.016 ≈ 「至少在一路里排第一」。
+    # 图谱路是人工维护的关系，固定给 1.0，天然能过阈值。
+    # 调这个值请用管理端的检索调试页看 trace，别凭感觉改。
+    rag_score_threshold: float = 0.016
     rag_max_context_chars: int = 3000
     rag_trace_enabled: bool = False
     rag_index_dir: str = "data/rag_index"

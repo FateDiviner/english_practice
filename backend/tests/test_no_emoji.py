@@ -30,6 +30,8 @@ SKIP_DIRS = {
     ".git",
     "__pycache__",
     ".pytest_cache",
+    # pytest 的 basetemp（见 pytest.ini），里面是用例跑出来的临时文件
+    ".pytest_tmp",
     "coverage",
     "build",
 }
