@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import auth, chat, practice, stats, user, wordbooks
 from app.api.admin import audit as admin_audit
+from app.api.admin import kb as admin_kb
 from app.api.admin import relations as admin_relations
 from app.api.admin import users as admin_users
 from app.api.admin import words as admin_words
@@ -65,4 +66,5 @@ app.include_router(chat.router)
 app.include_router(admin_users.router)
 app.include_router(admin_words.router)
 app.include_router(admin_relations.router)
+app.include_router(admin_kb.router)
 app.include_router(admin_audit.router)

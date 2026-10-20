@@ -2,6 +2,7 @@
 
 from app.models.audit import AuditLog
 from app.models.chat import ChatMessage
+from app.models.kb import KbChunk, KnowledgeDocument
 from app.models.record import UserWordRecord
 from app.models.relation import WordRelation
 from app.models.session import PracticeSessionRecord
@@ -16,6 +17,8 @@ __all__ = [
     "Word",
     "UserWordRecord",
     "WordRelation",
+    "KnowledgeDocument",
+    "KbChunk",
     "PracticeSessionRecord",
     "ChatMessage",
 ]

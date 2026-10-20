@@ -112,6 +112,47 @@ class WordUpsertRequest(BaseModel):
     example_en: str = Field(min_length=1, max_length=500)
     example_cn: str = Field(min_length=1, max_length=500)
 
+class KbDocumentOut(BaseModel):
+    """知识库文档（管理端视角）。"""
+
+    id: int
+    name: str
+    source_filename: str
+    mime_type: str
+    size_bytes: int
+    char_count: int
+    chunk_count: int
+    # pending / indexing / ready / failed
+    status: str
+    error: str | None = None
+    created_at: str
+
+
+class RagHitOut(BaseModel):
+    """一次检索命中的候选，供调试页展示。"""
+
+    rank: int
+    score: float
+    source: str
+    # chunk / word / relation
+    kind: str
+    content: str
+    heading: str = ""
+    metadata: dict = Field(default_factory=dict)
+
+
+class RagPreviewOut(BaseModel):
+    """试跑一次检索的完整结果。"""
+
+    query: str
+    lang: str
+    skipped: str | None = None
+    strategy: str
+    hits: list[RagHitOut] = Field(default_factory=list)
+    context: str = ""
+    trace: list[dict] = Field(default_factory=list)
+
+
 class WordRelationOut(BaseModel):
     """一条词条关系边。"""
 

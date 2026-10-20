@@ -34,7 +34,37 @@ class Settings(BaseSettings):
     ai_timeout_seconds: float = 60.0
 
     # 跨域
+    # 跨域
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # ---- RAG ----
+    # embedding 走与对话同一个 OpenAI 兼容供应商，不引入本地模型
+    embedding_model: str = "text-embedding-v3"
+    embedding_batch_size: int = 16
+    embedding_timeout_seconds: float = 30.0
+
+    # 可插拔：阶段列表全部走环境变量，增删阶段不改代码
+    rag_enabled: bool = True
+    rag_strategy: str = "naive"
+    rag_stages_pre: str = "normalize,lang_detect,intent_gate,keywords,rewrite"
+    rag_stages_retrieve: str = "bm25,vector,graph"
+    rag_stages_fuse: str = "rrf"
+    rag_stages_rerank: str = "lexical"
+    rag_stages_post: str = "threshold,dedup,compress,cite"
+    # 默认关：开启后每次多一轮 LLM 调用，会吃掉 2 秒首字延迟预算
+    rag_llm_rerank: bool = False
+    rag_crag_max_rounds: int = 2
+    rag_top_k: int = 6
+    # 最高分低于此值则不注入上下文，防止不相关内容污染答案
+    rag_score_threshold: float = 0.15
+    rag_max_context_chars: int = 3000
+    rag_trace_enabled: bool = False
+    rag_index_dir: str = "data/rag_index"
+
+    # ---- 知识库 ----
+    kb_max_upload_bytes: int = 10 * 1024 * 1024
+    kb_chunk_chars: int = 500
+    kb_chunk_overlap: int = 100
 
     @property
     def cors_origin_list(self) -> list[str]:
