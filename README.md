@@ -21,6 +21,7 @@ english_practice/
 ├── docs/
 │   ├── DEPLOY.md          远程服务器 Docker 部署说明
 │   ├── RAG-INTRO.md       RAG 入门：这套知识检索在做什么
+│   ├── RAG-STAGES.md      逐个阶段的代码标注与优化点
 │   └── RAG.md             检索管线设计与知识库上传链路
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
@@ -136,6 +137,7 @@ API 地址。
 ## AI 伴学与 RAG
 
 - 入门版（这套机制在做什么、每一步解决什么问题）：[docs/RAG-INTRO.md](docs/RAG-INTRO.md)
+- 阶段代码标注（改某个阶段时的对照手册）：[docs/RAG-STAGES.md](docs/RAG-STAGES.md)
 - 技术版（分层设计、各阶段职责、上传链路、已知取舍）：[docs/RAG.md](docs/RAG.md)
 
 ## 测试与门禁
