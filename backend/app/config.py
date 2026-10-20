@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     ai_model: str = ""
     ai_timeout_seconds: float = 60.0
 
+    # ---- LangGraph Agent ----
+    agent_enabled: bool = True
+    agent_max_tool_rounds: int = 2
+    agent_recursion_limit: int = 12
+
     # 跨域
     # 跨域
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

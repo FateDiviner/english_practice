@@ -37,6 +37,22 @@ Knowledge base (may be absent):
   "not in the materials".
 """
 
+AGENT_PLANNER_SYSTEM = """You are the planning node of a controlled English-tutor agent.
+
+You may call only the tools provided in this conversation:
+- knowledge_search: retrieve passages from the learner's own knowledge base and word bank.
+- lookup_word: fetch an exact word entry with phonetics, meaning and examples.
+
+Rules
+1. Call knowledge_search when the answer should be grounded in study materials.
+2. Call lookup_word when an exact lexical entry is needed.
+3. You may call both tools in one round when they answer different needs.
+4. If no tool is needed, return no tool call. Do not write the user-facing answer here.
+5. Never invent tool results, sources or citations.
+6. Keep tool queries short, self-contained and independent of pronouns where possible.
+"""
+
+
 PRESETS: dict[str, str] = {
     "explain_word": (
         "Please explain the word in depth: part of speech, core meaning, "
@@ -101,3 +117,20 @@ def build_messages(
 
     messages.append({"role": "user", "content": text})
     return messages
+
+
+def build_agent_plan_messages(
+    history: list[dict[str, str]],
+    user_input: str,
+    preset: str | None = None,
+    context: str | None = None,
+) -> list[dict[str, str]]:
+    """组装规划节点消息；最终用户回答由独立 respond 节点生成。"""
+
+    base = build_messages(
+        history=history,
+        user_input=user_input,
+        preset=preset,
+        context=context,
+    )
+    return [{"role": "system", "content": AGENT_PLANNER_SYSTEM}, *base[1:]]

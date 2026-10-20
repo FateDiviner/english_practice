@@ -81,6 +81,7 @@ REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
     },
     "wordbooks": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
     "words": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+    "chat_messages": {"metadata": "TEXT NULL"},
 }
 
 

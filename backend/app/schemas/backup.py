@@ -52,6 +52,7 @@ class BackupMessage(BaseModel):
     role: str = Field(max_length=16)
     content: str = Field(default="", max_length=20000)
     feedback: str | None = None
+    metadata: str | None = None
     created_at: str
 
 

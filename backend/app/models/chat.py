@@ -24,6 +24,11 @@ class ChatMessage(Base):
     content: Mapped[str] = mapped_column(Text, default="", nullable=False)
     # 纠错区块 JSON：{"grammar": "...", "polish": ["...", "..."]}
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Agent/RAG 执行摘要 JSON：模式、轮次、工具、来源与耗时
+    # ORM 属性不能叫 metadata（SQLAlchemy 保留名），物理列名仍是 metadata
+    agent_metadata: Mapped[str | None] = mapped_column(
+        "metadata", Text, index=True, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

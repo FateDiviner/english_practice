@@ -129,6 +129,7 @@ def export_backup(db: Session, user: User) -> BackupFile:
             "content": message.content,
             # 原样搬运 JSON 字符串，绝不二次序列化
             "feedback": message.feedback,
+            "metadata": message.agent_metadata,
             "created_at": message.created_at.isoformat(),
         }
         for message in reversed(messages)
@@ -262,7 +263,7 @@ def import_backup(db: Session, user: User, payload: BackupFile) -> ImportResult:
         sessions_added += 1
 
     existing_messages = {
-        (row.role, row.content, row.feedback, row.created_at)
+        (row.role, row.content, row.feedback, row.agent_metadata, row.created_at)
         for row in db.scalars(
             select(ChatMessage).where(ChatMessage.user_id == user.id)
         ).all()
@@ -274,7 +275,7 @@ def import_backup(db: Session, user: User, payload: BackupFile) -> ImportResult:
         if created_at is None:
             messages_skipped += 1
             continue
-        key = (item.role, item.content, item.feedback, created_at)
+        key = (item.role, item.content, item.feedback, item.metadata, created_at)
         if key in existing_messages:
             messages_skipped += 1
             continue
@@ -285,6 +286,7 @@ def import_backup(db: Session, user: User, payload: BackupFile) -> ImportResult:
                 role=item.role,
                 content=item.content,
                 feedback=item.feedback,
+                agent_metadata=item.metadata,
                 created_at=created_at,
             )
         )
