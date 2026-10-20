@@ -8,11 +8,12 @@ import {
   Modal,
   Popconfirm,
   Space,
-  Table,
   Tag,
 } from "@arco-design/web-react";
 
 import { createWordbook, fetchAdminWordbooks, updateWordbook } from "@/api/admin";
+import RecordCard from "@/components/RecordCard";
+import ResponsiveList from "@/components/ResponsiveList";
 import { toMessage } from "@/api/client";
 import type { AdminWordbook, ContentStatus } from "@/types";
 
@@ -118,12 +119,53 @@ export default function WordbooksPage() {
         </Space>
       </header>
 
-      <Table
+      <ResponsiveList
         rowKey="id"
         loading={loading}
         data={items}
         noDataElement="还没有词书"
         pagination={false}
+        renderCard={(row) => (
+          <RecordCard
+            title={row.title}
+            tags={[
+              <Tag key="c" size="small"><code>{row.code}</code></Tag>,
+              <Tag key="s" size="small" color={row.status === "active" ? "green" : "gray"}>
+                {row.status === "active" ? "[上架中]" : "[已下架]"}
+              </Tag>,
+            ]}
+            fields={[
+              { label: "难度", value: row.difficulty || "-" },
+              { label: "可用词数", value: row.total_words },
+              { label: "已下架词", value: row.archived_words },
+              { label: "被激活用户", value: row.active_users },
+            ]}
+            actions={
+              <Space size={4} wrap>
+                <Button size="small" onClick={() => navigate(`/admin/wordbooks/${row.id}`)}>
+                  词条
+                </Button>
+                <Button size="small" onClick={() => openEdit(row)}>
+                  编辑
+                </Button>
+                <Popconfirm
+                  title={
+                    row.status === "active"
+                      ? "下架该词书？用户端将不再展示，练习记录保留"
+                      : "上架该词书？"
+                  }
+                  okText="确认"
+                  cancelText="取消"
+                  onOk={() => void toggleStatus(row)}
+                >
+                  <Button size="small" status={row.status === "active" ? "danger" : "default"}>
+                    {row.status === "active" ? "下架" : "上架"}
+                  </Button>
+                </Popconfirm>
+              </Space>
+            }
+          />
+        )}
         columns={[
           {
             title: "code",

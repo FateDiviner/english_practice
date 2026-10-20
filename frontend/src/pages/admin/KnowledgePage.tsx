@@ -4,7 +4,6 @@ import {
   Empty,
   Message,
   Popconfirm,
-  Table,
   Tag,
   Typography,
   Upload,
@@ -16,6 +15,8 @@ import {
   fetchKbFormats,
   uploadDocument,
 } from "@/api/admin";
+import RecordCard from "@/components/RecordCard";
+import ResponsiveList from "@/components/ResponsiveList";
 import { toMessage } from "@/api/client";
 import type { KbDocument } from "@/types";
 
@@ -126,12 +127,46 @@ export default function KnowledgePage() {
         </Typography.Text>
       )}
 
-      <Table
+      <ResponsiveList
         rowKey="id"
         loading={loading}
         data={items}
         noDataElement="还没有上传任何资料"
         pagination={false}
+        renderCard={(row) => (
+          <RecordCard
+            title={row.source_filename}
+            tags={[
+              <Tag key="s" size="small" color={STATUS_COLOR[row.status]}>
+                {STATUS_LABEL[row.status]}
+              </Tag>,
+            ]}
+            fields={[
+              { label: "大小", value: formatSize(row.size_bytes) },
+              { label: "字数", value: row.char_count },
+              { label: "切块数", value: row.chunk_count },
+              { label: "上传时间", value: row.created_at.slice(0, 10) },
+            ]}
+            actions={
+              row.error ? (
+                <Typography.Text type="error" style={{ fontSize: 13 }}>
+                  {row.error}
+                </Typography.Text>
+              ) : (
+                <Popconfirm
+                  title="删除该资料及其全部切块？"
+                  okText="确认删除"
+                  cancelText="取消"
+                  onOk={() => void remove(row)}
+                >
+                  <Button size="small" status="danger">
+                    删除
+                  </Button>
+                </Popconfirm>
+              )
+            }
+          />
+        )}
         columns={[
           {
             title: "名称",

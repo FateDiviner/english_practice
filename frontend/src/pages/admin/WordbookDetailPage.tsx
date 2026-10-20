@@ -10,7 +10,6 @@ import {
   Popconfirm,
   Select,
   Space,
-  Table,
   Tag,
   Typography,
 } from "@arco-design/web-react";
@@ -29,6 +28,8 @@ import {
   updateWord,
   type WordPayload,
 } from "@/api/admin";
+import RecordCard from "@/components/RecordCard";
+import ResponsiveList from "@/components/ResponsiveList";
 import { toMessage } from "@/api/client";
 import type {
   AdminWord,
@@ -334,7 +335,7 @@ export default function WordbookDetailPage() {
         <Button onClick={() => void load()}>刷新</Button>
       </Space>
 
-      <Table
+      <ResponsiveList
         rowKey="id"
         loading={loading}
         data={items}
@@ -346,6 +347,50 @@ export default function WordbookDetailPage() {
           onChange: (next) => setPage(next),
           showTotal: true,
         }}
+        renderCard={(row) => (
+          <RecordCard
+            title={row.word}
+            tags={[
+              <Tag key="p" size="small" className="phonetic-display">
+                {row.phonetic}
+              </Tag>,
+              <Tag key="s" size="small" color={row.status === "active" ? "green" : "gray"}>
+                {row.status === "active" ? "[可用]" : "[已下架]"}
+              </Tag>,
+            ]}
+            fields={[
+              { label: "释义", value: row.translation },
+              { label: "例句", value: row.example_en },
+            ]}
+            actions={
+              <Space size={4} wrap>
+                <Button size="small" onClick={() => openEdit(row)}>
+                  编辑
+                </Button>
+                <Button size="small" onClick={() => void openRelations(row)}>
+                  关系
+                </Button>
+                <Button
+                  size="small"
+                  status={row.status === "active" ? "danger" : "default"}
+                  onClick={() => void toggleStatus(row)}
+                >
+                  {row.status === "active" ? "下架" : "上架"}
+                </Button>
+                <Popconfirm
+                  title="物理删除该词条？仅在没有任何用户练习记录时允许"
+                  okText="确认删除"
+                  cancelText="取消"
+                  onOk={() => void remove(row, true)}
+                >
+                  <Button size="small" status="danger">
+                    物理删除
+                  </Button>
+                </Popconfirm>
+              </Space>
+            }
+          />
+        )}
         columns={[
           {
             title: "单词",

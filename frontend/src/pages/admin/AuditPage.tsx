@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Space, Table, Tag, Typography } from "@arco-design/web-react";
+import { Button, Space, Tag, Typography } from "@arco-design/web-react";
 
 import { fetchAuditLogs } from "@/api/admin";
+import RecordCard from "@/components/RecordCard";
+import ResponsiveList from "@/components/ResponsiveList";
 import { toMessage } from "@/api/client";
 import { Message } from "@arco-design/web-react";
 import type { AuditLogEntry } from "@/types";
@@ -65,7 +67,7 @@ export default function AuditPage() {
         <Button onClick={() => void load()}>刷新</Button>
       </header>
 
-      <Table
+      <ResponsiveList
         rowKey="id"
         loading={loading}
         data={items}
@@ -76,6 +78,27 @@ export default function AuditPage() {
           current: page,
           onChange: (next) => setPage(next),
         }}
+        renderCard={(row) => (
+          <RecordCard
+            title={ACTION_LABEL[row.action] ?? row.action}
+            tags={[
+              row.actor_id === null && (
+                <Tag key="gone" size="small" color="gray">
+                  [已删除]
+                </Tag>
+              ),
+            ]}
+            fields={[
+              { label: "操作人", value: row.actor_name },
+              {
+                label: "对象",
+                value: row.target_type ? `${row.target_type} #${row.target_id}` : "-",
+              },
+              { label: "影响行数", value: row.affected_rows },
+              { label: "时间", value: row.created_at.slice(0, 19).replace("T", " ") },
+            ]}
+          />
+        )}
         columns={[
           {
             title: "时间",
