@@ -1,6 +1,8 @@
 import { getToken, getGuestId } from "./client";
 import { RequestError } from "./client";
 import type {
+  AgentEventPayload,
+  AgentMetadata,
   ChatMessage,
   ChatPreset,
   ChatSource,
@@ -15,6 +17,8 @@ export interface StreamDone {
   feedback: FeedbackBlock | null;
   /** 本次回答引用的资料来源，为空表示没走 RAG 或没命中 */
   sources: ChatSource[];
+  /** Agent / 标准问答执行摘要；旧后端可能不返回该字段 */
+  metadata: AgentMetadata | null;
   created_at: string;
 }
 
@@ -22,6 +26,8 @@ export interface StreamHandlers {
   onStart?: () => void;
   /** 检索阶段的进展。生成开始前推给前端，把等待显形 */
   onStatus?: (payload: RagStatusPayload) => void;
+  /** LangGraph 规划、工具调用与降级状态 */
+  onAgent?: (payload: AgentEventPayload) => void;
   onDelta: (delta: string) => void;
   onDone: (payload: StreamDone) => void;
   /** 网络中断 / 超时，retryable 决定是否展示一键重试 */
@@ -156,6 +162,16 @@ function handleBlock(block: string, handlers: StreamHandlers): void {
     handlers.onStatus?.(payload as unknown as RagStatusPayload);
     return;
   }
+  if (type === "agent" || type === "tool_call" || type === "tool_result") {
+    const phase =
+      type === "tool_call"
+        ? "tool_call"
+        : type === "tool_result"
+          ? "tool_result"
+          : ((payload.phase ?? "planning") as AgentEventPayload["phase"]);
+    handlers.onAgent?.({ ...(payload as unknown as AgentEventPayload), phase });
+    return;
+  }
   if (type === "delta") {
     handlers.onDelta(String(payload.delta ?? ""));
     return;
@@ -170,6 +186,7 @@ function handleBlock(block: string, handlers: StreamHandlers): void {
       content: String(payload.content ?? ""),
       feedback: (payload.feedback as FeedbackBlock | null) ?? null,
       sources: (payload.sources as ChatSource[] | undefined) ?? [],
+      metadata: (payload.metadata as AgentMetadata | null | undefined) ?? null,
       created_at: String(payload.created_at ?? new Date().toISOString()),
     });
   }

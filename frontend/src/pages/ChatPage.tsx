@@ -28,6 +28,8 @@ import {
   IconClose,
 } from "@arco-design/web-react/icon";
 import type {
+  AgentEventPayload,
+  AgentMetadata,
   ChatMessage,
   ChatPreset,
   ChatSource,
@@ -135,6 +137,64 @@ function SourceTags({ sources }: { sources: ChatSource[] }) {
   );
 }
 
+/** Agent 规划、工具调用和降级状态条 */
+function AgentStatusBar({ status }: { status: AgentEventPayload }) {
+  let text = "";
+  if (status.phase === "planning") {
+    text = `[Agent 规划中] 第 ${status.round ?? 1} 轮`;
+  } else if (status.phase === "tool_call") {
+    const toolLabel = status.tool === "lookup_word" ? "查询单词" : "查询知识库";
+    text = `[${toolLabel}] ${status.query ?? ""}`.trim();
+  } else if (status.phase === "tool_result") {
+    const toolLabel = status.tool === "lookup_word" ? "单词查询" : "知识库检索";
+    text = status.success === false
+      ? `[${toolLabel}失败]`
+      : `[${toolLabel}完成] ${status.hits ?? 0} 条结果`;
+  } else if (status.phase === "responding") {
+    text = "[正在生成回答]";
+  } else if (status.phase === "fallback") {
+    text = "[已降级到标准问答]";
+  }
+  if (!text) return null;
+  return (
+    <div data-testid="chat-agent-status" style={{ marginBottom: 8 }}>
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        {text}
+      </Typography.Text>
+    </div>
+  );
+}
+
+/** 历史消息中的简要 Agent 执行摘要 */
+function AgentMetaTags({ metadata }: { metadata: AgentMetadata }) {
+  if (metadata.mode !== "agent" && !metadata.fallback) return null;
+  return (
+    <div
+      data-testid="chat-agent-meta"
+      style={{
+        marginTop: 8,
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 4,
+      }}
+    >
+      <Tag size="small" color="gray">
+        {metadata.fallback ? "[已降级]" : "[Agent]"}
+      </Tag>
+      {metadata.mode === "agent" && (
+        <Tag size="small" color="gray">
+          轮次 {metadata.rounds}
+        </Tag>
+      )}
+      {metadata.tools.map((tool) => (
+        <Tag key={tool} size="small" color="gray">
+          {tool}
+        </Tag>
+      ))}
+    </div>
+  );
+}
+
 /** 检索阶段状态条：把生成前那 1~2 秒的等待显形 */
 function RagStatusBar({ status }: { status: RagStatusPayload }) {
   if (status.phase === "retrieving") {
@@ -197,6 +257,9 @@ function MessageBubble({
         {message.feedback && message.role === "assistant" && (
           <FeedbackCard feedback={message.feedback} />
         )}
+        {message.role === "assistant" && message.metadata && (
+          <AgentMetaTags metadata={message.metadata} />
+        )}
         {message.role === "assistant" && sources && <SourceTags sources={sources} />}
       </div>
     </div>
@@ -216,6 +279,8 @@ export default function ChatPage() {
   const [context, setContext] = useState<ChatContext | null>(null);
   // 检索阶段的进展。生成开始前先推给前端，把那 1~2 秒的等待显形
   const [ragStatus, setRagStatus] = useState<RagStatusPayload | null>(null);
+  // LangGraph 规划、工具调用与降级进度
+  const [agentStatus, setAgentStatus] = useState<AgentEventPayload | null>(null);
   // 每条 AI 消息引用了哪些资料，key 是 message_id
   const [sourcesMap, setSourcesMap] = useState<Record<number, ChatSource[]>>({});
 
@@ -233,6 +298,13 @@ export default function ChatPage() {
     try {
       const history = await fetchMessages();
       setMessages(history);
+      const restoredSources: Record<number, ChatSource[]> = {};
+      for (const item of history) {
+        if (item.metadata && item.metadata.sources.length > 0) {
+          restoredSources[item.id] = item.metadata.sources;
+        }
+      }
+      setSourcesMap(restoredSources);
     } catch (error) {
       Message.error({ content: toMessage(error) });
     } finally {
@@ -289,6 +361,7 @@ export default function ChatPage() {
         role: "user",
         content: text,
         feedback: null,
+        metadata: null,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, optimistic]);
@@ -299,16 +372,20 @@ export default function ChatPage() {
       await streamChat(
         { content: text, preset, context: contextRef.current, signal: controller.signal },
         {
+          onAgent: (payload) => {
+            setAgentStatus(payload);
+          },
           onStatus: (payload) => {
             // retrieved 带来源，skipped 带原因；retrieving 之后若没等到
             // retrieved 就直接出 delta，说明检索降级了，状态条自然消失
             setRagStatus(payload);
           },
           onDelta: (delta) => {
-            // 第一个字开始流式后，检索状态条就该让位给正文
+            // 第一个字开始流式后，状态条就该让位给正文
             setRagStatus((current) =>
               current && current.phase === "retrieving" ? null : current
             );
+            setAgentStatus(null);
             setStreamText((prev) => prev + delta);
           },
           onDone: (payload) => {
@@ -319,15 +396,19 @@ export default function ChatPage() {
                 role: "assistant",
                 content: payload.content,
                 feedback: payload.feedback,
+                metadata: payload.metadata,
                 created_at: payload.created_at,
               },
             ]);
-            if (payload.sources.length > 0) {
-              setSourcesMap((prev) => ({ ...prev, [payload.message_id]: payload.sources }));
+            const doneSources =
+              payload.metadata?.sources.length ? payload.metadata.sources : payload.sources;
+            if (doneSources.length > 0) {
+              setSourcesMap((prev) => ({ ...prev, [payload.message_id]: doneSources }));
             }
             setStreamText("");
             setStreamFeedback(null);
             setRagStatus(null);
+            setAgentStatus(null);
             setStreaming(false);
             contextRef.current = null;
           },
@@ -335,6 +416,7 @@ export default function ChatPage() {
             setStreaming(false);
             setStreamText("");
             setRagStatus(null);
+            setAgentStatus(null);
             setLastError(message);
             if (retryable) {
               Message.warning({ content: `${message}，可点击重试`, duration: 4000 });
@@ -353,6 +435,7 @@ export default function ChatPage() {
     setStreaming(false);
     setStreamText("");
     setRagStatus(null);
+    setAgentStatus(null);
     setLastError("已中止生成");
   };
 
@@ -563,6 +646,7 @@ export default function ChatPage() {
             );
           })}
 
+          {agentStatus && <AgentStatusBar status={agentStatus} />}
           {ragStatus && <RagStatusBar status={ragStatus} />}
 
           {streaming && (

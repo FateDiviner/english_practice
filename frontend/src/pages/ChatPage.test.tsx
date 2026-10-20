@@ -40,6 +40,7 @@ function mockStreamDone() {
       content: "Sure, let us look at that word.",
       feedback: null,
       sources: [],
+      metadata: null,
       created_at: "2026-10-16T08:00:00.000Z",
     });
   });
@@ -98,6 +99,7 @@ describe("AI 伴学键盘流", () => {
         content: "Sounds good!",
         feedback: null,
         sources: [],
+        metadata: null,
         created_at: "2026-10-16T08:01:00.000Z",
       });
     });
@@ -258,5 +260,77 @@ describe("历史按日分组", () => {
     render(<ChatPage />);
 
     expect((await screen.findAllByText("今天")).length).toBe(1);
+  });
+});
+
+describe("LangGraph Agent 状态与来源", () => {
+  it("展示 Agent 规划状态并保持键盘流可用", async () => {
+    mockedStreamChat.mockImplementation(async (_options, handlers) => {
+      handlers.onAgent?.({
+        phase: "planning",
+        round: 1,
+      });
+    });
+
+    render(<ChatPage />);
+    const input = await screen.findByLabelText("对话输入框");
+    fireEvent.change(input, { target: { value: "Explain present perfect" } });
+    fireEvent.keyDown(input, ENTER);
+
+    expect(await screen.findByTestId("chat-agent-status")).toBeTruthy();
+    expect(screen.getByText("[Agent 规划中] 第 1 轮")).toBeTruthy();
+    expect(mockedStreamChat).toHaveBeenCalled();
+  });
+
+  it("历史消息恢复 Agent 摘要与引用来源", async () => {
+    mockedFetchMessages.mockResolvedValue([
+      {
+        ...assistantMessage,
+        metadata: {
+          mode: "agent",
+          rounds: 1,
+          tools: ["knowledge_search"],
+          sources: [
+            {
+              index: 1,
+              kind: "chunk",
+              label: "Grammar notes",
+              source: "kb",
+            },
+          ],
+          fallback: null,
+          elapsed_ms: 120,
+        },
+      },
+    ]);
+
+    render(<ChatPage />);
+
+    expect(await screen.findByTestId("chat-agent-meta")).toBeTruthy();
+    expect(screen.getByText("[Agent]")).toBeTruthy();
+    expect(screen.getByText("knowledge_search")).toBeTruthy();
+    expect(screen.getByTestId("chat-sources")).toBeTruthy();
+    expect(screen.getByText("[1] Grammar notes")).toBeTruthy();
+  });
+
+  it("降级消息显示已降级摘要", async () => {
+    mockedFetchMessages.mockResolvedValue([
+      {
+        ...assistantMessage,
+        metadata: {
+          mode: "chat",
+          rounds: 0,
+          tools: [],
+          sources: [],
+          fallback: "当前模型不支持 Agent 工具调用",
+          elapsed_ms: 80,
+        },
+      },
+    ]);
+
+    render(<ChatPage />);
+
+    expect(await screen.findByTestId("chat-agent-meta")).toBeTruthy();
+    expect(screen.getByText("[已降级]")).toBeTruthy();
   });
 });

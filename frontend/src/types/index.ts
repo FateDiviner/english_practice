@@ -281,6 +281,7 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   feedback: FeedbackBlock | null;
+  metadata?: AgentMetadata | null;
   created_at: string;
 }
 
@@ -485,6 +486,27 @@ export interface ChatSource {
   kind: string;
   label: string;
   source: string;
+}
+
+/** Agent 执行摘要，不含模型隐藏推理 */
+export interface AgentMetadata {
+  mode: "agent" | "chat";
+  rounds: number;
+  tools: string[];
+  sources: ChatSource[];
+  fallback: string | null;
+  elapsed_ms: number;
+}
+
+/** Agent 规划、工具调用与降级状态帧 */
+export interface AgentEventPayload {
+  phase: "planning" | "responding" | "fallback" | "tool_call" | "tool_result";
+  round?: number;
+  tool?: string;
+  query?: string;
+  success?: boolean;
+  hits?: number;
+  reason?: string;
 }
 
 /** 检索状态帧 */
