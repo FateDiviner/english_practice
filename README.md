@@ -16,6 +16,10 @@
 
 ```text
 english_practice/
+├── docker-compose.yml     三服务编排（MySQL + 后端 + 前端）
+├── docker/mysql/          MySQL 首次启动初始化脚本
+├── docs/
+│   └── DEPLOY.md          远程服务器 Docker 部署说明
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
 ├── backend/
@@ -83,6 +87,8 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 输入框在页面加载与每次切词后**自动聚焦**，整条流程无需鼠标。
 
 ## Docker 部署
+
+完整的远程服务器部署、备份恢复、更新回滚与排障说明见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 一条命令拉起 MySQL + 后端 + 前端：
 
