@@ -27,7 +27,13 @@ import {
   IconDelete,
   IconClose,
 } from "@arco-design/web-react/icon";
-import type { ChatMessage, ChatPreset, FeedbackBlock } from "@/types";
+import type {
+  ChatMessage,
+  ChatPreset,
+  ChatSource,
+  FeedbackBlock,
+  RagStatusPayload,
+} from "@/types";
 import { clearMessages, fetchMessages, streamChat } from "@/api/chat";
 import {
   clearChatContext,
@@ -100,8 +106,66 @@ function FeedbackCard({ feedback }: { feedback: FeedbackBlock }) {
   );
 }
 
+/** 引用来源标签：让用户能自己核对 AI 说了什么依据 */
+function SourceTags({ sources }: { sources: ChatSource[] }) {
+  if (sources.length === 0) return null;
+  return (
+    <div
+      data-testid="chat-sources"
+      style={{
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: "1px solid var(--border-color)",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 4,
+      }}
+    >
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        引用：
+      </Typography.Text>
+      {sources.map((source) => (
+        <Tooltip key={`${source.kind}-${source.index}`} content={source.label}>
+          <Tag size="small" color="gray" style={{ maxWidth: 180 }}>
+            [{source.index}] {source.label}
+          </Tag>
+        </Tooltip>
+      ))}
+    </div>
+  );
+}
+
+/** 检索阶段状态条：把生成前那 1~2 秒的等待显形 */
+function RagStatusBar({ status }: { status: RagStatusPayload }) {
+  if (status.phase === "retrieving") {
+    return (
+      <div data-testid="chat-rag-status" style={{ marginBottom: 8 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          正在检索知识库…
+        </Typography.Text>
+      </div>
+    );
+  }
+  if (status.phase === "retrieved") {
+    return (
+      <div data-testid="chat-rag-status" style={{ marginBottom: 8 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          已命中 {status.hits ?? 0} 条资料
+        </Typography.Text>
+      </div>
+    );
+  }
+  return null;
+}
+
 /** 单条消息气泡：用户靠右、AI 靠左 */
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+  message,
+  sources,
+}: {
+  message: ChatMessage;
+  sources?: ChatSource[];
+}) {
   return (
     <div
       style={{
@@ -133,6 +197,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         {message.feedback && message.role === "assistant" && (
           <FeedbackCard feedback={message.feedback} />
         )}
+        {message.role === "assistant" && sources && <SourceTags sources={sources} />}
       </div>
     </div>
   );
@@ -149,6 +214,10 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   // 从默写页 / 错题本带过来的讲解对象
   const [context, setContext] = useState<ChatContext | null>(null);
+  // 检索阶段的进展。生成开始前先推给前端，把那 1~2 秒的等待显形
+  const [ragStatus, setRagStatus] = useState<RagStatusPayload | null>(null);
+  // 每条 AI 消息引用了哪些资料，key 是 message_id
+  const [sourcesMap, setSourcesMap] = useState<Record<number, ChatSource[]>>({});
 
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -230,7 +299,18 @@ export default function ChatPage() {
       await streamChat(
         { content: text, preset, context: contextRef.current, signal: controller.signal },
         {
-          onDelta: (delta) => setStreamText((prev) => prev + delta),
+          onStatus: (payload) => {
+            // retrieved 带来源，skipped 带原因；retrieving 之后若没等到
+            // retrieved 就直接出 delta，说明检索降级了，状态条自然消失
+            setRagStatus(payload);
+          },
+          onDelta: (delta) => {
+            // 第一个字开始流式后，检索状态条就该让位给正文
+            setRagStatus((current) =>
+              current && current.phase === "retrieving" ? null : current
+            );
+            setStreamText((prev) => prev + delta);
+          },
           onDone: (payload) => {
             setMessages((prev) => [
               ...prev,
@@ -242,14 +322,19 @@ export default function ChatPage() {
                 created_at: payload.created_at,
               },
             ]);
+            if (payload.sources.length > 0) {
+              setSourcesMap((prev) => ({ ...prev, [payload.message_id]: payload.sources }));
+            }
             setStreamText("");
             setStreamFeedback(null);
+            setRagStatus(null);
             setStreaming(false);
             contextRef.current = null;
           },
           onError: (message, retryable) => {
             setStreaming(false);
             setStreamText("");
+            setRagStatus(null);
             setLastError(message);
             if (retryable) {
               Message.warning({ content: `${message}，可点击重试`, duration: 4000 });
@@ -267,6 +352,7 @@ export default function ChatPage() {
     abortRef.current?.abort();
     setStreaming(false);
     setStreamText("");
+    setRagStatus(null);
     setLastError("已中止生成");
   };
 
@@ -469,10 +555,15 @@ export default function ChatPage() {
                     </Typography.Text>
                   </div>
                 )}
-                <MessageBubble message={message} />
+                <MessageBubble
+                  message={message}
+                  sources={sourcesMap[message.id]}
+                />
               </Fragment>
             );
           })}
+
+          {ragStatus && <RagStatusBar status={ragStatus} />}
 
           {streaming && (
             <div

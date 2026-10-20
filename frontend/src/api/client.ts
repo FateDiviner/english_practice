@@ -9,12 +9,18 @@ const GUEST_KEY = "ep_guest_id";
 export class RequestError extends Error {
   readonly status: number;
   readonly retryable: boolean;
+  /**
+   * 后端 detail 的原始值。批量导入校验失败时它是 { message, issues } 这样的
+   * 结构化对象，管理页要按条展示错在第几条哪个词，不能只留一句文案。
+   */
+  readonly detail: unknown;
 
-  constructor(message: string, status = 0, retryable = false) {
+  constructor(message: string, status = 0, retryable = false, detail?: unknown) {
     super(message);
     this.name = "RequestError";
     this.status = status;
     this.retryable = retryable;
+    this.detail = detail;
   }
 }
 
@@ -65,9 +71,19 @@ http.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
     const status = error.response?.status ?? 0;
-    const detail =
-      error.response?.data?.detail ??
-      (status === 0 ? "网络连接失败，请检查网络后重试" : "请求失败，请稍后重试");
+    const raw = error.response?.data?.detail;
+
+    // detail 可能是字符串，也可能是 { message, issues } 这样的结构化对象
+    let message: string;
+    if (typeof raw === "string") {
+      message = raw;
+    } else if (raw && typeof raw === "object" && "message" in raw) {
+      message = String((raw as { message: unknown }).message);
+    } else if (status === 0) {
+      message = "网络连接失败，请检查网络后重试";
+    } else {
+      message = "请求失败，请稍后重试";
+    }
 
     // 凭证失效：清理本地登录态，交由路由守卫跳转登录页
     if (status === 401) {
@@ -75,7 +91,9 @@ http.interceptors.response.use(
       clearGuestId();
     }
 
-    return Promise.reject(new RequestError(detail, status, status >= 500 || status === 0));
+    return Promise.reject(
+      new RequestError(message, status, status >= 500 || status === 0, raw)
+    );
   }
 );
 

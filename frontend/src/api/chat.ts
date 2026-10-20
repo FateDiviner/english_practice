@@ -1,17 +1,27 @@
 import { getToken, getGuestId } from "./client";
 import { RequestError } from "./client";
-import type { ChatMessage, ChatPreset, FeedbackBlock } from "@/types";
+import type {
+  ChatMessage,
+  ChatPreset,
+  ChatSource,
+  FeedbackBlock,
+  RagStatusPayload,
+} from "@/types";
 
 /** 流式结束帧 */
 export interface StreamDone {
   message_id: number;
   content: string;
   feedback: FeedbackBlock | null;
+  /** 本次回答引用的资料来源，为空表示没走 RAG 或没命中 */
+  sources: ChatSource[];
   created_at: string;
 }
 
 export interface StreamHandlers {
   onStart?: () => void;
+  /** 检索阶段的进展。生成开始前推给前端，把等待显形 */
+  onStatus?: (payload: RagStatusPayload) => void;
   onDelta: (delta: string) => void;
   onDone: (payload: StreamDone) => void;
   /** 网络中断 / 超时，retryable 决定是否展示一键重试 */
@@ -142,6 +152,10 @@ function handleBlock(block: string, handlers: StreamHandlers): void {
     handlers.onStart?.();
     return;
   }
+  if (type === "status") {
+    handlers.onStatus?.(payload as unknown as RagStatusPayload);
+    return;
+  }
   if (type === "delta") {
     handlers.onDelta(String(payload.delta ?? ""));
     return;
@@ -155,6 +169,7 @@ function handleBlock(block: string, handlers: StreamHandlers): void {
       message_id: Number(payload.message_id ?? 0),
       content: String(payload.content ?? ""),
       feedback: (payload.feedback as FeedbackBlock | null) ?? null,
+      sources: (payload.sources as ChatSource[] | undefined) ?? [],
       created_at: String(payload.created_at ?? new Date().toISOString()),
     });
   }

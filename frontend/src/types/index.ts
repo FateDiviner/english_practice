@@ -36,6 +36,9 @@ export interface UserInfo {
   id: number;
   username: string;
   is_guest: boolean;
+  /** user: 普通用户 / admin: 管理员，前端据此决定是否显示管理入口 */
+  role: "user" | "admin";
+  status: "active" | "banned";
   active_wordbook_id: number | null;
   consecutive_days: number;
   created_at: string;
@@ -284,7 +287,210 @@ export interface ChatMessage {
 /** 快捷 Prompt 指令 */
 export type ChatPreset = "explain_word" | "grammar_check" | "free_chat";
 
-/** 后端统一错误体 */
+/**
+ * 后端统一错误体。
+ * detail 多数时候是字符串，但批量导入校验失败时是 { message, issues }。
+ */
 export interface ApiError {
-  detail: string;
+  detail: string | { message: string; issues?: ValidationIssue[] };
+}
+
+/* ===================== 管理端 ===================== */
+
+/** 账号角色。游客永远是 user */
+export type UserRole = "user" | "admin";
+
+/** 账号状态 */
+export type UserStatus = "active" | "banned";
+
+/** 词书 / 词条状态 */
+export type ContentStatus = "active" | "archived";
+
+/** 词条关系类型 */
+export type WordRelationType =
+  | "collocation"
+  | "derived"
+  | "confuse"
+  | "synonym"
+  | "antonym";
+
+/** 管理端视角的用户 */
+export interface AdminUser {
+  id: number;
+  username: string;
+  is_guest: boolean;
+  role: UserRole;
+  status: UserStatus;
+  active_wordbook_id: number | null;
+  consecutive_days: number;
+  created_at: string;
+  last_practiced_at: string | null;
+  practice_count: number;
+}
+
+export interface AdminUserPage {
+  total: number;
+  items: AdminUser[];
+}
+
+/** 管理端视角的词书 */
+export interface AdminWordbook {
+  id: number;
+  code: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  status: ContentStatus;
+  total_words: number;
+  archived_words: number;
+  active_users: number;
+}
+
+/** 管理端视角的词条 */
+export interface AdminWord {
+  id: number;
+  word: string;
+  phonetic: string;
+  translation: string;
+  example_en: string;
+  example_cn: string;
+  sequence: number;
+  status: ContentStatus;
+}
+
+export interface AdminWordPage {
+  total: number;
+  items: AdminWord[];
+}
+
+/** 一条校验问题，可定位到某本书的第几条 */
+export interface ValidationIssue {
+  rule: string;
+  field: string;
+  message: string;
+}
+
+/** 词书批量导入结果。applied 为 false 时整批未写库。
+ *
+ * 不叫 ImportResult 是因为备份模块已有同名类型，两者字段完全不同，
+ * 合并成一个会让任何一方的调用方读到不存在的字段。 */
+export interface WordbookImportResult {
+  applied: boolean;
+  books_created: number;
+  books_updated: number;
+  words_created: number;
+  words_updated: number;
+  words_total: number;
+  issues: ValidationIssue[];
+}
+
+/** 导入失败时后端把 issues 塞在 detail 里，这里给出解析后的形状 */
+export interface ImportFailure {
+  message: string;
+  issues: ValidationIssue[];
+}
+
+/** 词条关系边 */
+export interface WordRelation {
+  id: number;
+  head_word_id: number;
+  tail_word: string;
+  relation: WordRelationType;
+  note: string;
+}
+
+/** 审计日志 */
+export interface AuditLogEntry {
+  id: number;
+  actor_id: number | null;
+  actor_name: string;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: string | null;
+  affected_rows: number;
+  ip: string | null;
+  created_at: string;
+}
+
+export interface AuditLogPage {
+  total: number;
+  items: AuditLogEntry[];
+}
+
+/** 知识库文档 */
+export interface KbDocument {
+  id: number;
+  name: string;
+  source_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  char_count: number;
+  chunk_count: number;
+  status: "pending" | "indexing" | "ready" | "failed";
+  error: string | null;
+  created_at: string;
+}
+
+/** RAG 检索命中 */
+export interface RagHit {
+  rank: number;
+  score: number;
+  source: string;
+  kind: string;
+  content: string;
+  heading: string;
+  metadata: Record<string, unknown>;
+}
+
+/** 单个阶段的执行痕迹 */
+export interface RagStageTrace {
+  stage: string;
+  kind: string;
+  duration_ms: number;
+  input_count: number;
+  output_count: number;
+  note: string;
+}
+
+/** 试跑一次检索的完整结果 */
+export interface RagPreview {
+  query: string;
+  lang: string;
+  skipped: string | null;
+  strategy: string;
+  hits: RagHit[];
+  context: string;
+  trace: RagStageTrace[];
+}
+
+/** 当前生效的 RAG 配置 */
+export interface RagConfig {
+  enabled: boolean;
+  strategy: string;
+  llm_rerank: boolean;
+  top_k: number;
+  score_threshold: number;
+  max_context_chars: number;
+  embedding_model: string;
+  stages: Record<string, string>;
+  available_stages: Record<string, string[]>;
+  available_strategies: string[];
+  vector_counts: Record<string, number>;
+}
+
+/** 引用来源标签 */
+export interface ChatSource {
+  index: number;
+  kind: string;
+  label: string;
+  source: string;
+}
+
+/** 检索状态帧 */
+export interface RagStatusPayload {
+  phase: "retrieving" | "retrieved" | "skipped";
+  reason?: string;
+  hits?: number;
+  sources?: ChatSource[];
 }

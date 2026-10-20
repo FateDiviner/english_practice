@@ -9,6 +9,8 @@ const GUEST: UserInfo = {
   id: 9,
   username: "guest_demo",
   is_guest: true,
+  role: "user" as const,
+  status: "active" as const,
   active_wordbook_id: null,
   consecutive_days: 0,
   created_at: "2026-10-16T00:00:00",

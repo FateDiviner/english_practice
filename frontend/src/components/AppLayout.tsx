@@ -9,6 +9,11 @@ import {
   IconSun,
   IconPoweroff,
   IconExport,
+  IconUserGroup,
+  IconStorage,
+  IconFile,
+  IconSettings,
+  IconHistory,
 } from "@arco-design/web-react/icon";
 import DataBackupModal from "@/components/DataBackupModal";
 import { useAuthStore } from "@/stores/auth";
@@ -21,11 +26,19 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const USER_NAV: NavItem[] = [
   { key: "dashboard", label: "词书中心", path: "/", icon: <IconHome /> },
   { key: "practice", label: "默写练习", path: "/practice", icon: <IconBulb /> },
   { key: "wrong", label: "错题本", path: "/wrong-book", icon: <IconBulb /> },
   { key: "chat", label: "AI 伴学", path: "/chat", icon: <IconMessage /> },
+];
+
+const ADMIN_NAV: NavItem[] = [
+  { key: "admin-users", label: "用户管理", path: "/admin/users", icon: <IconUserGroup /> },
+  { key: "admin-books", label: "词书管理", path: "/admin/wordbooks", icon: <IconStorage /> },
+  { key: "admin-kb", label: "知识库", path: "/admin/knowledge", icon: <IconFile /> },
+  { key: "admin-rag", label: "检索调试", path: "/admin/rag", icon: <IconSettings /> },
+  { key: "admin-audit", label: "审计日志", path: "/admin/audit", icon: <IconHistory /> },
 ];
 
 /** 应用外壳：顶部导航 + 内容区，全站可键盘 Tab 到达 */
@@ -39,6 +52,9 @@ export default function AppLayout() {
   // 提示条只在本次会话内可折叠，下次打开页面仍会提醒，避免数据静默丢失
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [backupVisible, setBackupVisible] = useState(false);
+
+  // 管理入口只对管理员显示。这里只是隐藏入口，真正的权限在后端 require_admin 把关
+  const navItems = user?.role === "admin" ? [...USER_NAV, ...ADMIN_NAV] : USER_NAV;
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -71,7 +87,7 @@ export default function AppLayout() {
           </Typography.Title>
 
           <nav style={{ display: "flex", gap: 4, flex: 1, overflowX: "auto" }}>
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Button
                 key={item.key}
                 type={isActive(item.path) ? "primary" : "text"}

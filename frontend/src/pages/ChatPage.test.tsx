@@ -39,6 +39,7 @@ function mockStreamDone() {
       message_id: 21,
       content: "Sure, let us look at that word.",
       feedback: null,
+      sources: [],
       created_at: "2026-10-16T08:00:00.000Z",
     });
   });
@@ -96,6 +97,7 @@ describe("AI 伴学键盘流", () => {
         message_id: 11,
         content: "Sounds good!",
         feedback: null,
+        sources: [],
         created_at: "2026-10-16T08:01:00.000Z",
       });
     });
