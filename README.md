@@ -20,6 +20,7 @@ english_practice/
 ├── docker/mysql/          MySQL 首次启动初始化脚本
 ├── docs/
 │   ├── DEPLOY.md          远程服务器 Docker 部署说明
+│   ├── RAG-INTRO.md       RAG 入门：这套知识检索在做什么
 │   └── RAG.md             检索管线设计与知识库上传链路
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
@@ -134,7 +135,8 @@ API 地址。
 
 ## AI 伴学与 RAG
 
-检索管线的分层设计、各阶段职责、知识库上传从前端到向量库的完整链路，以及实现细节与已知取舍，见 [docs/RAG.md](docs/RAG.md)。
+- 入门版（这套机制在做什么、每一步解决什么问题）：[docs/RAG-INTRO.md](docs/RAG-INTRO.md)
+- 技术版（分层设计、各阶段职责、上传链路、已知取舍）：[docs/RAG.md](docs/RAG.md)
 
 ## 测试与门禁
 
