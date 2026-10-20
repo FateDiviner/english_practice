@@ -112,6 +112,35 @@ class WordUpsertRequest(BaseModel):
     example_en: str = Field(min_length=1, max_length=500)
     example_cn: str = Field(min_length=1, max_length=500)
 
+class WordRelationOut(BaseModel):
+    """一条词条关系边。"""
+
+    id: int
+    head_word_id: int
+    tail_word: str
+    # collocation / derived / confuse / synonym / antonym
+    relation: str
+    note: str = ""
+
+
+class WordRelationCreateRequest(BaseModel):
+    """新增词条关系。"""
+
+    tail_word: str = Field(min_length=1, max_length=128)
+    relation: str = Field(pattern="^(collocation|derived|confuse|synonym|antonym)$")
+    note: str = Field(default="", max_length=500)
+
+
+class WordRelationUpdateRequest(BaseModel):
+    """编辑词条关系，字段均可选。"""
+
+    tail_word: str | None = Field(default=None, min_length=1, max_length=128)
+    relation: str | None = Field(
+        default=None, pattern="^(collocation|derived|confuse|synonym|antonym)$"
+    )
+    note: str | None = Field(default=None, max_length=500)
+
+
 class ValidationIssueOut(BaseModel):
     """一条校验问题，可直接定位到某本书的第几条。"""
 

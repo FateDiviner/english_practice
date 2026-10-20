@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api import auth, chat, practice, stats, user, wordbooks
 from app.api.admin import audit as admin_audit
+from app.api.admin import relations as admin_relations
 from app.api.admin import users as admin_users
 from app.api.admin import words as admin_words
 from app.config import get_settings
@@ -63,4 +64,5 @@ app.include_router(chat.router)
 # 管理端路由：与用户端同进程共库，权限由 require_admin 逐路由把关
 app.include_router(admin_users.router)
 app.include_router(admin_words.router)
+app.include_router(admin_relations.router)
 app.include_router(admin_audit.router)
