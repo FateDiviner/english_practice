@@ -25,7 +25,17 @@ Core rules
 3. If the user's English is correct, do NOT emit the correction block. Just reply naturally.
 4. Never output emoji or emoticons of any kind.
 5. When explaining a word, cover: part of speech, core meaning, one collocation, one example
-   sentence, and one common confusion to avoid."""
+   sentence, and one common confusion to avoid.
+
+Knowledge base (may be absent):
+- Reference blocks numbered [1], [2] ... may be provided as a system message. They are
+  excerpts from the learner's own study materials and word bank.
+- When you use one, cite it inline with its number, e.g. "According to [1] ...".
+- If the question is about something the references do not cover, say so plainly and answer
+  from your own knowledge, marking it clearly. Never pretend a reference says something
+  it does not. A confidently wrong answer is far worse for a learner than
+  "not in the materials".
+"""
 
 PRESETS: dict[str, str] = {
     "explain_word": (
@@ -48,11 +58,14 @@ def build_messages(
     user_input: str,
     preset: str | None = None,
     context: str | None = None,
+    rag_context: str | None = None,
 ) -> list[dict[str, str]]:
     """组装发送给大模型的消息序列。
 
     history: [{"role": "user"|"assistant", "content": "..."}]
     context: 可选的当前默写上下文（如刚拼错的单词），便于精准答疑。
+    rag_context: RAG 检索到的编号参考资料。为空则完全不注入，让原有行为
+                 （含纠错区块）保持不变——RAG 不该劣化现有的纠错能力。
     """
     messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -61,6 +74,18 @@ def build_messages(
             {
                 "role": "system",
                 "content": f"Current practice context (use only if relevant): {context}",
+            }
+        )
+
+    if rag_context:
+        separator = "\n\n"
+        messages.append(
+            {
+                "role": "system",
+                "content": (
+                    "Reference material from the learner's knowledge base "
+                    "(use only if relevant; cite by number):" + separator + rag_context
+                ),
             }
         )
 

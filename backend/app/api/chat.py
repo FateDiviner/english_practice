@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,12 +15,38 @@ from app.ai.client import AIError, stream_chat
 from app.ai.corrections import feedback_from_json, feedback_to_json, parse_feedback
 from app.ai.prompts import build_messages
 from app.api.deps import get_current_user
+from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.models.chat import ChatMessage
 from app.models.user import User
+from app.rag import pipeline as rag_pipeline
+from app.rag.types import RagResult
 from app.schemas.chat import ChatSendRequest, MessageOut
 
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+
+def _retrieve(content: str, history: list[dict]) -> RagResult | None:
+    """跑一次 RAG 检索，永不抛出。
+
+    用独立会话：event_stream 是生成器，请求级会话在流结束前就已关闭，
+    这里必须自己开一个。检索失败也只降级为空上下文，绝不阻断对话。
+
+    返回 None 表示 RAG 整体关闭——此时连 status 帧都不该发，
+    否则前端会渲染出一个「没有检索内容」的空状态，像是出了问题。
+    """
+    if not settings.rag_enabled:
+        return None
+    try:
+        with SessionLocal() as db:
+            return rag_pipeline.run(content, db, history=history)
+    except Exception:  # noqa: BLE001 - 检索失败绝不能阻断对话
+        logger.exception("RAG 检索异常，降级为无上下文")
+        return RagResult(skipped="检索异常")
+
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -99,11 +126,30 @@ async def send(payload: ChatSendRequest, user: User = Depends(get_current_user))
 
         yield _sse({"type": "start"})
 
+        # RAG 检索在生成开始前完成。它永不抛出，失败时返回空上下文，
+        # 所以下面一律按「有则注入、无则照旧」处理。
+        rag_result = _retrieve(content, history) or RagResult(skipped=None)
+        if rag_result.skipped:
+            yield _sse(
+                {"type": "status", "phase": "skipped", "reason": rag_result.skipped}
+            )
+        elif rag_result.hits:
+            yield _sse({"type": "status", "phase": "retrieving"})
+            yield _sse(
+                {
+                    "type": "status",
+                    "phase": "retrieved",
+                    "hits": len(rag_result.hits),
+                    "sources": rag_result.sources,
+                }
+            )
+
         messages = build_messages(
             history=history,
             user_input=content,
             preset=payload.preset,
             context=payload.context,
+            rag_context=rag_result.context or None,
         )
 
         buffer: list[str] = []
@@ -137,6 +183,7 @@ async def send(payload: ChatSendRequest, user: User = Depends(get_current_user))
                 "message_id": message_id,
                 "content": body or full_text,
                 "feedback": block.model_dump() if block else None,
+                "sources": rag_result.sources,
                 "created_at": created_at,
             }
         )
