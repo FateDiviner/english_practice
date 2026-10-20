@@ -12,12 +12,16 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.constants import STATUS_ACTIVE
-from app.models.kb import DOC_READY, KbChunk, KnowledgeDocument
+from app.db import SessionLocal
+from app.models.kb import DOC_PENDING, DOC_READY, KbChunk, KnowledgeDocument
 from app.models.relation import RELATION_LABELS, RELATION_SYNONYM, WordRelation
 from app.models.word import Word
 from app.rag import embeddings, store
 from app.rag.store import COLLECTION_KB, COLLECTION_WORD
+
+settings = get_settings()
 
 FAILED_STATUS = "failed"
 READY_STATUS = "ready"
@@ -142,11 +146,31 @@ def _mark_all_failed(db: Session) -> None:
     db.commit()
 
 
-def ensure_word_index(db: Session) -> int:
-    """词库向量懒加载：首次检索时构建，之后只补新增的词。
+def ensure_kb_index(db: Session) -> int:
+    """把尚未索引的知识库文档建好索引，返回本次新索引的文档数。
 
-    返回本次新写入的词条数。embedding 不可用时静默返回 0，
-    检索会退化到 BM25 与图谱两路。
+    与词库一样走懒加载：上传接口只解析切块，向量化留到这里，
+    否则一个大 PDF 会让上传请求挂十几秒。没有后台进程，靠第一次检索触发。
+    """
+    pending = db.scalars(
+        select(KnowledgeDocument).where(KnowledgeDocument.status == DOC_PENDING)
+    ).all()
+    if not pending:
+        return 0
+    for document in pending:
+        document.status = DOC_READY
+    db.commit()
+    index_kb(db)
+    return len(pending)
+
+
+def ensure_word_index(db: Session) -> int:
+    """补齐缺失的词库向量，返回本次新写入的词条数。
+
+    embedding 不可用时静默返回 0，检索会退化到 BM25 与图谱两路。
+
+    正常路径由启动时的 warm_up() 后台线程提前建好；这里兜底，
+    保证后台预热没跑完或中途有新词入库时，检索仍能拿到向量。
     """
     words = db.scalars(
         select(Word).where(Word.status == STATUS_ACTIVE).order_by(Word.id)
@@ -160,10 +184,63 @@ def ensure_word_index(db: Session) -> int:
     if not pending:
         return 0
 
-    try:
-        vectors = embeddings.embed([word_document(word) for word in pending])
-    except embeddings.EmbeddingError:
-        return 0
+    written = 0
+    batch = max(1, settings.embedding_batch_size)
+    # 分批写入：全部嵌入成功才落盘，中途失败不留半截索引，
+    # 否则下次增量时这些词会被当成「已索引」而永久缺失
+    for start in range(0, len(pending), batch):
+        chunk = pending[start : start + batch]
+        try:
+            vectors = embeddings.embed([word_document(word) for word in chunk])
+        except embeddings.EmbeddingError:
+            break
+        vector_store.upsert(
+            COLLECTION_WORD,
+            ids=[word.id for word in chunk],
+            embeddings=vectors,
+            documents=[word_document(word) for word in chunk],
+            metadatas=[
+                {
+                    "word_id": word.id,
+                    "word": word.word,
+                    "translation": word.translation,
+                    "phonetic": word.phonetic,
+                }
+                for word in chunk
+            ],
+        )
+        written += len(chunk)
+    return written
+
+
+def warm_up(db_factory=None) -> int:
+    """启动时后台预热：把词库与知识库的向量建起来。
+
+    不在请求路径上做这件事——313 个词条要几十次 embedding 调用，
+    放进第一个用户请求里会让那次对话卡十几秒，远超首字延迟预算。
+
+    放后台线程而不是单独进程：本项目「本地优先、零运维」，
+    不该为了预热再引入一个要管理的 worker。
+    """
+    import logging
+    import threading
+
+    logger = logging.getLogger(__name__)
+
+    def _run() -> None:
+        factory = db_factory or SessionLocal
+        try:
+            with factory() as db:
+                words = ensure_word_index(db)
+                docs = ensure_kb_index(db)
+                if words or docs:
+                    logger.info("RAG 索引预热完成：词库 %d 条，文档 %d 份", words, docs)
+        except Exception:  # noqa: BLE001 - 预热失败不该影响启动
+            logger.exception("RAG 索引预热失败，检索将退化到 BM25 与图谱")
+
+    thread = threading.Thread(target=_run, name="rag-warmup", daemon=True)
+    thread.start()
+    return 0
 
     vector_store.upsert(
         COLLECTION_WORD,

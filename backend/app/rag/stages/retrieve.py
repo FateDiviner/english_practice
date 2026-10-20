@@ -215,6 +215,8 @@ def vector(ctx: RagContext) -> None:
     db = ctx.db
     if db is None:
         return
+    # 两条懒加载入口都在这里触发：没有后台进程，靠第一次检索把索引建起来
+    corpus.ensure_kb_index(db)
     corpus.ensure_word_index(db)
 
     query = ctx.retrieval_query or ctx.normalized or ctx.query

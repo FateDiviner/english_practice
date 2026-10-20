@@ -23,8 +23,14 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """启动时确保表结构存在。"""
+    """启动时确保表结构存在，并后台预热 RAG 索引。"""
     init_db()
+    # 预热在后台线程里做，不阻塞启动也不占用户请求：
+    # 313 个词条要几十次 embedding 调用，放进第一个用户请求会让那次对话卡十几秒
+    if settings.rag_enabled:
+        from app.rag import corpus
+
+        corpus.warm_up()
     yield
 
 

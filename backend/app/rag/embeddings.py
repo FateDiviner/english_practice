@@ -65,12 +65,27 @@ def clear_cache() -> None:
 
 
 def embed(texts: list[str], use_cache: bool = True) -> list[list[float]]:
-    """批量取向量。空输入直接返回空，不打接口。"""
+    """批量取向量。空输入直接返回空，不打接口。
+
+    超过 embedding_batch_size 的输入会分批：313 个词条一次性丢给接口要么
+    超时要么被拒，而失败是静默降级的，症状只会表现为「向量路没召回」。
+    """
     if not texts:
         return []
     if not (settings.ai_base_url and settings.ai_api_key):
         raise EmbeddingError("未配置 AI 凭证，无法计算向量")
 
+    batch = max(1, settings.embedding_batch_size)
+    if len(texts) > batch:
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), batch):
+            vectors.extend(_embed_batch(texts[start : start + batch], use_cache))
+        return vectors
+    return _embed_batch(texts, use_cache)
+
+
+def _embed_batch(texts: list[str], use_cache: bool) -> list[list[float]]:
+    """一次接口调用。"""
     key = _cache_key(texts)
     if use_cache:
         cached = _cache_get(key)
@@ -95,6 +110,16 @@ def embed(texts: list[str], use_cache: bool = True) -> list[list[float]]:
             request, timeout=settings.embedding_timeout_seconds
         ) as response:
             payload = json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        # 4xx 一定要把响应体带出来：供应商的批量上限、超长文本都会从这里报，
+        # 只说「400 Bad Request」根本无从下手
+        try:
+            body = exc.read().decode("utf-8", "replace")[:300]
+        except Exception:  # noqa: BLE001
+            body = ""
+        raise EmbeddingError(
+            f"向量服务返回 {exc.code}（{len(texts)} 条）：{body or exc.reason}"
+        ) from exc
     except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
         raise EmbeddingError(f"向量服务调用失败：{exc}") from exc
 

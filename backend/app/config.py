@@ -40,7 +40,9 @@ class Settings(BaseSettings):
     # ---- RAG ----
     # embedding 走与对话同一个 OpenAI 兼容供应商，不引入本地模型
     embedding_model: str = "text-embedding-v3"
-    embedding_batch_size: int = 16
+    # 供应商硬上限是 10 条（超了直接 400 batch size is invalid）。
+    # 换供应商时先实测上限再改，失败是静默降级的，症状只会表现为「向量路没召回」
+    embedding_batch_size: int = 10
     # text-embedding-v3 实测返回 1024 维；换模型必须同步改这里，
     # 否则已有索引与新向量维度不一致，检索会直接崩
     embedding_dimension: int = 1024

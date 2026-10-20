@@ -28,6 +28,7 @@ from app.rag.registry import (
 from app.rag.store import FaissVectorStore, NullVectorStore
 from app.rag.stages import post, pre, ranking, retrieve
 from app.rag.types import Hit, RagContext, StageKind
+from app.db import SessionLocal
 from app.services.auth_service import create_user
 from tests.admin_helpers import unique_name
 
@@ -439,6 +440,63 @@ class TestPipeline:
         assert settings.rag_llm_rerank is False
         result = pipeline.run("现在完成时怎么构成", seeded)
         assert result.embedding_calls <= 1
+
+
+class TestIndexingLazyLoad:
+    """索引触发点：没有后台进程，靠启动预热 + 检索兜底。
+
+    这两个缺口都曾让 RAG 只剩 BM25 一路在工作，而症状只是「向量路没召回」，
+    极难从现象反查，所以各留一条回归。
+    """
+
+    def test_kb_pending_indexed_on_retrieval(
+        self, seeded: Session, rag_env: None, db: Session
+    ) -> None:
+        from sqlalchemy import select
+
+        from app.models.kb import DOC_PENDING, KnowledgeDocument
+        from app.rag.store import COLLECTION_KB
+
+        # 把文档退回待索引，模拟「上传后还没检索过」
+        for document in db.scalars(select(KnowledgeDocument)).all():
+            document.status = DOC_PENDING
+        db.commit()
+        store.get_store().replace_collection(COLLECTION_KB)
+        assert store.get_store().count(COLLECTION_KB) == 0
+
+        ctx = RagContext(query="现在完成时", db=db)
+        pre.normalize(ctx)
+        retrieve.vector(ctx)
+
+        assert store.get_store().count(COLLECTION_KB) > 0
+        assert any(hit.kind == "chunk" for hit in ctx.candidates)
+
+    def test_ensure_word_index_is_idempotent(self, seeded: Session, db: Session) -> None:
+        from app.rag.store import COLLECTION_WORD
+
+        # seeded 夹具已经建过索引，先清空才能验证「建一次、之后不再重复建」
+        store.get_store().replace_collection(COLLECTION_WORD)
+        assert store.get_store().count(COLLECTION_WORD) == 0
+
+        first = corpus.ensure_word_index(db)
+        assert first > 0
+        assert corpus.ensure_word_index(db) == 0
+        assert store.get_store().count(COLLECTION_WORD) == first
+
+    def test_batch_size_respects_provider_limit(self) -> None:
+        """当前供应商硬上限 10 条，超了直接 400。
+
+        失败是静默降级的，症状只会表现为「向量路没召回」，所以钉在这里。
+        """
+        assert settings.embedding_batch_size <= 10
+
+    def test_warm_up_is_non_blocking(self, seeded: Session) -> None:
+        """预热必须在后台线程里跑，不能阻塞启动路径。"""
+        import threading
+
+        before = threading.active_count()
+        corpus.warm_up(db_factory=SessionLocal)
+        assert threading.active_count() > before
 
 
 class TestVectorStoreContract:
