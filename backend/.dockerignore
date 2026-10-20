@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.pytest_tmp/
+tests/
+*.db
+*.sqlite
+*.sqlite3
+data/rag_index/
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore

@@ -82,6 +82,43 @@ npm run dev                # http://localhost:5173，/api 已代理至 :8000
 
 输入框在页面加载与每次切词后**自动聚焦**，整条流程无需鼠标。
 
+## Docker 部署
+
+一条命令拉起 MySQL + 后端 + 前端：
+
+```bash
+cp .env.example .env      # 填入 AI 三项配置与数据库密码
+docker compose up -d --build
+# 浏览器打开 http://localhost:8080
+```
+
+三个容器：`nginx` 托管前端静态文件并把 `/api` 反代给后端，前端因此继续用
+**相对路径**，构建产物既能跑在容器里也能跑在本地 dev server，不需要注入任何
+API 地址。
+
+| 卷 | 用途 |
+| :--- | :--- |
+| `mysql-data` | 数据库文件。删掉即清空全部学习数据 |
+| `rag-index` | faiss 向量索引。不进镜像，重建容器不必重新向量化 313 个词条 |
+
+几个刻意的处理：
+
+- **nginx 关闭 `proxy_buffering`**。AI 伴学走 SSE 逐字输出，默认缓冲会把它攒成
+  一块再下发，用户看到的就是「卡住几秒后一次性刷出来」
+- **`proxy_read_timeout` 放到 300 秒**，生成一整段回答可能超过默认的 60 秒
+- **后端容器绑 `0.0.0.0` 并关闭热重载**。绑 `127.0.0.1` 的话 nginx 连不上；
+  容器里 reload 的子进程在信号处理上很麻烦，重建容器更快也更干净
+- **`CORS_ORIGINS` 置空**：同源反代，不需要额外放开跨域
+- **MySQL 强制 `utf8mb4` 与 UTC 时区**。练习日期按 UTC 自然日算，
+  依赖容器默认时区会在跨时区时算错连续打卡
+- **建表交给后端的 `init_db()`**，`docker/mysql/init.sql` 只建库与字符集。
+  手写 DDL 会和 ORM 模型产生两份真相，改字段要同步两处
+
+索引目录的路径要注意：faiss 的 C++ 文件写入在 Windows 上走 ANSI 代码页，
+含非 ASCII 字符的路径会直接打不开文件。容器内路径是纯 ASCII 没问题；
+若在 Windows 上用 bind mount 挂宿主机路径，宿主目录名里的中文会透传进去，
+所以这里用 named volume 而不是 bind mount。
+
 ## 测试与门禁
 
 ```bash

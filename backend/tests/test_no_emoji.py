@@ -32,6 +32,8 @@ SKIP_DIRS = {
     ".pytest_cache",
     # pytest 的 basetemp（见 pytest.ini），里面是用例跑出来的临时文件
     ".pytest_tmp",
+    # faiss 向量索引与 sidecar 元数据，是运行时产物不是源码
+    "rag_index",
     "coverage",
     "build",
 }

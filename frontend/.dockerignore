@@ -1,0 +1,11 @@
+# 只排除构建无关的大目录。测试文件刻意不排除：
+# tsconfig 的 include 是按 src glob 的，少文件会让 tsc 的行为依赖 glob 细节，
+# 省下的体积远不值这个风险
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+Dockerfile
+.dockerignore

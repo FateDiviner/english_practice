@@ -1,0 +1,85 @@
+# 一条命令拉起整套：MySQL + 后端 + 前端
+#
+#   docker compose up -d --build
+#
+# 敏感配置走环境变量，compose 会自动读取仓库根的 .env 做变量替换。
+# 首次使用：cp .env.example .env 后填入 AI 三项配置与数据库密码。
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-dev-root-password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-english_practice}
+      MYSQL_USER: ${MYSQL_USER:-english_practice}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dev-app-password}
+      # 与后端一致，避免 datetime 存取时时区漂移
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # 练习日期按 UTC 自然日算，容器时区不能依赖系统默认
+      - --default-time-zone=+00:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次启动自动执行，之后不再重复执行
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-dev-root-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        # 必须等 db 真正可连，否则后端启动时的 init_db 会直接失败
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-english_practice}:${MYSQL_PASSWORD:-dev-app-password}@db:3306/${MYSQL_DATABASE:-english_practice}?charset=utf8mb4
+      SECRET_KEY: ${SECRET_KEY:-please-override-this-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      # 三项齐全才走真实模型，留空自动降级为本地 Mock，保证全流程可跑通
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-60}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v3}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-10}
+      RAG_ENABLED: ${RAG_ENABLED:-1}
+      RAG_STRATEGY: ${RAG_STRATEGY:-naive}
+      RAG_TOP_K: ${RAG_TOP_K:-6}
+      RAG_SCORE_THRESHOLD: ${RAG_SCORE_THRESHOLD:-0.016}
+      RAG_LLM_RERANK: ${RAG_LLM_RERANK:-0}
+      RAG_TRACE_ENABLED: ${RAG_TRACE_ENABLED:-0}
+      KB_MAX_UPLOAD_BYTES: ${KB_MAX_UPLOAD_BYTES:-10485760}
+      # 同源，nginx 已经把 /api 反代过来，不需要额外放开跨域
+      CORS_ORIGINS: ""
+    volumes:
+      # faiss 索引不进镜像，也不该随容器销毁——重建容器不必重新向量化 313 个词条
+      - rag-index:/app/data/rag_index
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  mysql-data:
+  rag-index:
