@@ -70,7 +70,7 @@ describe("ResponsiveList", () => {
   it("窄屏空数据给出可读的空态", () => {
     mockViewport(true);
     render(
-      <ResponsiveList
+      <ResponsiveList<Row>
         rowKey="id"
         data={[]}
         columns={COLUMNS}
