@@ -60,8 +60,8 @@ python -m venv .venv
 # source .venv/bin/activate && pip install -r requirements.txt   # macOS / Linux
 
 cp .env.example .env      # 填入 MySQL 连接串与 AI 三项配置
-.venv/Scripts/python -m scripts.init_db           # 建表 + 导入 313 词
-.venv/Scripts/python main.py                   # 默认 127.0.0.1:8000，热重载
+.venv/Scripts/python main.py                 # 建表 + 导入 313 词 + 启动，幂等
+# 默认 127.0.0.1:8000，热重载；词书与表结构在启动时自动就绪，无需额外步骤
 ```
 
 ### 2. 前端

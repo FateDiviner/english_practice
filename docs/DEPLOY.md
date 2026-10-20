@@ -97,6 +97,25 @@ docker compose exec backend python -m scripts.promote_admin <用户名>
 
 脚本只做提升，不创建账号，也不打印任何凭据。退出码：`0` 已提升、`1` 未变更（用户不存在 / 已是管理员 / 是游客）、`2` 用法错误。
 
+### 内置词书是自动导入的
+
+后端启动时会自动导入 4 本内置词书（CET-4 / CET-6 / 高中 / 考研，共 313 词）。
+这一步是幂等的——已存在的词书只补缺失词条，不会重复插入，因此每次容器重启都会跑一遍，无需人工干预。
+
+```bash
+docker compose logs backend | grep "内置词书就绪"
+curl -s http://localhost:8080/api/wordbooks | head -c 200
+```
+
+若日志出现「内置词书导入失败」，通常是后端启动早于 MySQL 就绪。确认数据库状态后重启后端即可：
+
+```bash
+docker compose logs db | tail -20
+docker compose restart backend
+```
+
+播种失败**不会让启动中断**——服务照常起来，只是词书中心为空。这样至少还能访问接口去排查，而不是连问题都看不到。
+
 ### 确认向量索引预热完成
 
 后端启动时会在后台线程把 313 个词条向量化（约 32 次 embedding 调用，几十秒）。该线程**不阻塞启动，也不占用用户请求**；预热未完成时的检索会暂时只有 BM25 与图谱两路，向量路无结果。
@@ -210,6 +229,25 @@ docker compose build --build-arg npm_config_registry=https://registry.npmjs.org 
 ### 后端日志出现「向量服务返回 400」
 
 当前供应商的 embedding 单次批量上限是 10 条，配置项 `EMBEDDING_BATCH_SIZE` 若被改大就会触发。该失败是静默降级的，症状表现为「向量路没有召回」，排查时容易误判成检索逻辑问题。
+
+### 词书中心是空的
+
+后端启动时会自动导入内置词书，所以正常情况下不会出现这个现象。按顺序查：
+
+```bash
+docker compose logs backend | grep -E "内置词书|词书"
+curl -s http://localhost:8080/api/wordbooks
+docker compose exec backend python -c   "from app.db import SessionLocal; from sqlalchemy import text;    s = SessionLocal(); print(s.execute(text('SELECT COUNT(*) FROM wordbooks')).scalar())"
+```
+
+三种可能：
+
+- **接口返回 `[]` 且库里 0 本** —— 启动时的播种没跑成，看日志里的「内置词书导入失败」，
+  通常是后端早于 MySQL 就绪，`docker compose restart backend` 即可
+- **接口返回 `[]` 但库里有书** —— 词书被下架了（`status=archived`）。管理端「词书管理」
+  里能看到并重新上架；下架的词书对用户端完全隐藏，但练习记录保留
+- **接口返回书但词数为 0** —— 管理端新建过空词书还没导词。这是正常状态，
+  进「词条」页批量导入即可
 
 ### RAG 检索不到知识库内容
 

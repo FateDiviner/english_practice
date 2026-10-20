@@ -23,8 +23,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """启动时确保表结构存在，并后台预热 RAG 索引。"""
+    """启动时确保表结构与词书数据就绪，并后台预热 RAG 索引。"""
     init_db()
+    _seed_wordbooks()
     # 预热在后台线程里做，不阻塞启动也不占用户请求：
     # 313 个词条要几十次 embedding 调用，放进第一个用户请求会让那次对话卡十几秒
     if settings.rag_enabled:
@@ -32,6 +33,35 @@ async def lifespan(_app: FastAPI):
 
         corpus.warm_up()
     yield
+
+
+def _seed_wordbooks() -> None:
+    """把内置词书导入数据库。幂等，已存在的词书只补缺失词条。
+
+    放在启动路径上而不是只靠 scripts/init_db：容器里跑的是 main.py，
+    不手动执行那条脚本的话 wordbooks 与 words 会一直是空表，
+    界面上表现为「没有词书」。本地 python main.py 与容器行为因此保持一致。
+
+    失败只记日志不让启动中断——播种失败不该让整个服务起不来，
+    否则连排查问题的接口都访问不到。
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    try:
+        from scripts.init_db import seed_wordbooks
+
+        stats = seed_wordbooks()
+    except Exception:  # noqa: BLE001 - 播种失败不能阻断启动
+        logger.exception("内置词书导入失败，词书中心将为空")
+        return
+    if stats["books"] or stats["words"]:
+        logger.info(
+            "内置词书就绪：新增 %s 本 / %s 词，跳过已存在 %s 词",
+            stats["books"],
+            stats["words"],
+            stats["skipped"],
+        )
 
 
 app = FastAPI(
