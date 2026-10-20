@@ -19,7 +19,8 @@ english_practice/
 ├── docker-compose.yml     三服务编排（MySQL + 后端 + 前端）
 ├── docker/mysql/          MySQL 首次启动初始化脚本
 ├── docs/
-│   └── DEPLOY.md          远程服务器 Docker 部署说明
+│   ├── DEPLOY.md          远程服务器 Docker 部署说明
+│   └── RAG.md             检索管线设计与知识库上传链路
 ├── AGENTS.md              开发规范与协作守则
 ├── PRD.md                 产品需求文档
 ├── backend/
@@ -27,19 +28,25 @@ english_practice/
 │   │   ├── api/           路由控制器（入参校验 + 响应格式化）
 │   │   ├── services/      业务逻辑（遗忘曲线调度、练习结算、认证迁移、看板统计）
 │   │   ├── ai/            Prompt 编排、纠错区块解析、SSE 流式客户端
+│   │   ├── rag/           可插拔检索管线（阶段 / 策略 / 向量存储 / 语料装载）
 │   │   ├── models/        ORM 模型与参数化查询
 │   │   └── schemas/       Pydantic 请求 / 响应契约
+│   ├── scripts/           init_db 建表导词、promote_admin 提升管理员
 │   ├── data/              内置词书数据（CET-4 / CET-6 / 考研 / 高中，共 313 词）
-│   ├── scripts/init_db.py 建表 + 词书导入（幂等）
-│   └── tests/             2779 项自动化测试
+│   ├── tests/             自动化测试
+│   ├── Dockerfile         后端镜像
+│   └── main.py            启动入口（python main.py）
 └── frontend/
+    ├── nginx.conf         静态托管 + /api 反代（关 SSE 缓冲）
+    ├── Dockerfile         多阶段构建：node 构建 → nginx 托管
     └── src/
-        ├── api/           HTTP 客户端与 SSE 流解析
+        ├── api/           HTTP 客户端与 SSE 流解析、管理端接口
         ├── stores/        Zustand：认证 / 全局设置 / 练习状态机
-        ├── hooks/         发音、键盘流契约
-        ├── components/    学习看板等复合区块
+        ├── hooks/         发音、键盘流契约、媒体查询
+        ├── components/    应用外壳、管理端守卫、响应式列表等复合区块
         ├── pages/         登录、词书中心、默写、错题本、AI 伴学
-        └── styles/        设计 Token（深浅色双套）
+        ├── pages/admin/   用户、词书、词条、知识库、检索调试、审计
+        └── styles/        设计 Token（深浅色双套、移动端断点）
 ```
 
 ## 快速开始
@@ -124,6 +131,10 @@ API 地址。
 含非 ASCII 字符的路径会直接打不开文件。容器内路径是纯 ASCII 没问题；
 若在 Windows 上用 bind mount 挂宿主机路径，宿主目录名里的中文会透传进去，
 所以这里用 named volume 而不是 bind mount。
+
+## AI 伴学与 RAG
+
+检索管线的分层设计、各阶段职责、知识库上传从前端到向量库的完整链路，以及实现细节与已知取舍，见 [docs/RAG.md](docs/RAG.md)。
 
 ## 测试与门禁
 
