@@ -81,8 +81,18 @@ REQUIRED_COLUMNS: dict[str, dict[str, str]] = {
     },
     "wordbooks": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
     "words": {"status": "VARCHAR(16) DEFAULT 'active' NOT NULL"},
+    # 这里的键恰好与 SQLAlchemy 默认索引命名一致：ix_{表名}_{列名}
     "chat_messages": {"metadata": "TEXT NULL"},
 }
+
+# 不能建整列索引的列：MySQL 对 TEXT/BLOB 建索引必须带前缀长度（error 1170），
+# 而本项目补列逻辑用 CREATE INDEX 建不了前缀索引，因此一律跳过。
+# 这些列只随主表主键扫描读取、从不作为独立过滤条件，索引本就不必要。
+NO_INDEX_COLUMNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("chat_messages", "metadata"),
+    }
+)
 
 
 def _ensure_columns(target: Engine | None = None) -> int:
@@ -90,6 +100,8 @@ def _ensure_columns(target: Engine | None = None) -> int:
 
     索引也要补：ORM 里声明了 index=True，但 create_all 不会给已有表补索引，
     只补列会让模型与实际表结构长期不一致。
+    TEXT/BLOB 列在 MySQL 上无法建整列索引（error 1170），由 NO_INDEX_COLUMNS
+    显式跳过，避免运维在 MySQL 上升级旧库时 init_db 直接崩溃。
 
     target 仅用于测试：传入一个临时引擎即可验证「旧版表结构被补齐」这条路径。
     """
@@ -110,6 +122,8 @@ def _ensure_columns(target: Engine | None = None) -> int:
                     applied += 1
                 # 列名与 SQLAlchemy 默认命名约定一致：ix_{表名}_{列名}
                 index_name = f"ix_{table}_{name}"
+                if (table, name) in NO_INDEX_COLUMNS:
+                    continue
                 if index_name not in {index["name"] for index in inspector.get_indexes(table)}:
                     conn.execute(
                         text(f"CREATE INDEX {index_name} ON {table} ({name})")

@@ -25,10 +25,10 @@ class ChatMessage(Base):
     # 纠错区块 JSON：{"grammar": "...", "polish": ["...", "..."]}
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Agent/RAG 执行摘要 JSON：模式、轮次、工具、来源与耗时
-    # ORM 属性不能叫 metadata（SQLAlchemy 保留名），物理列名仍是 metadata
-    agent_metadata: Mapped[str | None] = mapped_column(
-        "metadata", Text, index=True, nullable=True
-    )
+    # ORM 属性不能叫 metadata（SQLAlchemy 保留名），物理列名仍是 metadata。
+    # 不建索引：MySQL 不允许给 TEXT 列建整列索引（error 1170），
+    # 且该列只随 user_id 顺序读取、从不单独过滤，索引既建不了也没必要。
+    agent_metadata: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

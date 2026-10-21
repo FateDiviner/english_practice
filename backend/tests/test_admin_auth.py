@@ -237,6 +237,53 @@ class TestEnsureColumns:
         assert row[0] == ROLE_USER
         assert row[1] == USER_STATUS_ACTIVE
 
+    def test_text_column_never_gets_full_index(self, tmp_path) -> None:
+        """MySQL 对 TEXT 列建整列索引会报 error 1170。
+
+        旧库补 metadata 列时若顺手 CREATE INDEX，MySQL 上 init_db 直接崩溃
+        （后端启动失败就是这么来的）。对这类列必须只补列、不建索引。
+        """
+        url = f"sqlite:///{tmp_path}/mysql_like.db"
+        engine = create_engine(url)
+        # 不建 metadata 列，模拟「老库缺列」；SQLite 对 TEXT 索引宽容，
+        # 但我们要验证的是 _ensure_columns 不会去建这个索引，行为与方言无关
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE chat_messages ("
+                    "id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, "
+                    "role VARCHAR(16) NOT NULL, content TEXT NOT NULL, "
+                    "created_at DATETIME NOT NULL)"
+                )
+            )
+        indexes_before = {i["name"] for i in inspect(engine).get_indexes("chat_messages")}
+        assert "ix_chat_messages_metadata" not in indexes_before
+
+        applied = _ensure_columns(engine)
+
+        columns = {c["name"] for c in inspect(engine).get_columns("chat_messages")}
+        assert "metadata" in columns, "metadata 列必须被补上"
+        indexes_after = {i["name"] for i in inspect(engine).get_indexes("chat_messages")}
+        assert "ix_chat_messages_metadata" not in indexes_after, (
+            "TEXT 列不能建整列索引，否则 MySQL 启动直接 1170"
+        )
+        # 只补了 1 个列，索引被跳过，因而不再 +1
+        assert applied == 1
+
+    def test_fresh_create_does_not_index_text_metadata(self, tmp_path) -> None:
+        """全新建表也不能给 TEXT metadata 建索引。
+
+        这条路径同样会撞 MySQL error 1170：ORM 模型在 create_all 阶段
+        就为每个 index=True 生成索引，所以必须从模型源头去掉该索引声明。
+        """
+        url = f"sqlite:///{tmp_path}/fresh.db"
+        engine = create_engine(url)
+        Base.metadata.create_all(bind=engine)
+
+        indexes = {i["name"] for i in inspect(engine).get_indexes("chat_messages")}
+        assert "ix_chat_messages_metadata" not in indexes
+        columns = {c["name"] for c in inspect(engine).get_columns("chat_messages")}
+        assert "metadata" in columns, "列仍在，只是不带索引"
 
 class TestDbSessionIsolation:
     def test_session_local_opens(self) -> None:
