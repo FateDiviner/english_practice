@@ -12,6 +12,7 @@ import {
   Space,
   Tag,
   Typography,
+  Upload,
 } from "@arco-design/web-react";
 
 import {
@@ -23,7 +24,7 @@ import {
   extractIssues,
   fetchAdminWords,
   fetchRelations,
-  importWordbooks,
+  importWordsIntoBook,
   setWordStatus,
   updateWord,
   type WordPayload,
@@ -169,11 +170,13 @@ export default function WordbookDetailPage() {
       return;
     }
 
+    // 词条管理页的导入作用于当前词书：兼容「单个词条对象 / 词条数组」两种直觉
+    const words = Array.isArray(payload) ? payload : [payload];
     setImporting(true);
     try {
-      const result = await importWordbooks(payload);
+      const result = await importWordsIntoBook(numericId, words);
       Message.success({
-        content: `导入完成：新增词书 ${result.books_created} 本、更新 ${result.books_updated} 本，新增词条 ${result.words_created} 条、更新 ${result.words_updated} 条`,
+        content: `导入完成：新增词条 ${result.words_created} 条、更新 ${result.words_updated} 条`,
       });
       await load();
     } catch (error) {
@@ -245,7 +248,8 @@ export default function WordbookDetailPage() {
   };
 
   const importHint = useMemo(
-    () => "导入先校验后入库，任一条不通过则整批拒绝，下面会列出错在第几条哪个词；导出格式与 data/*.json 一致。",
+    () =>
+      "批量导入作用于当前词书：JSON 文件应为词条数组（也可单条对象），先校验后入库、任一条不通过则整批拒绝；导出格式与 data/*.json 的词条部分一致。",
     []
   );
 
@@ -262,20 +266,17 @@ export default function WordbookDetailPage() {
           </p>
         </div>
         <Space wrap>
-          <label style={{ cursor: "pointer" }}>
-            <input
-              type="file"
-              accept=".json,application/json"
-              style={{ display: "none" }}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                // 立刻清空，否则重选同一个文件不会触发 change
-                event.target.value = "";
-                if (file) void handleImportFile(file);
-              }}
-            />
+          <Upload
+            accept=".json,application/json"
+            showUploadList={false}
+            beforeUpload={(file) => {
+              void handleImportFile(file);
+              // 阻止 Arco 自动上传：导入完全在前端读文件后走接口
+              return false;
+            }}
+          >
             <Button loading={importing}>批量导入</Button>
-          </label>
+          </Upload>
           <Button onClick={() => void handleExport()}>导出</Button>
           <Button type="primary" onClick={openCreate}>
             新增词条

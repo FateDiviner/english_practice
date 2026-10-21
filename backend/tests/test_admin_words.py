@@ -329,6 +329,116 @@ class TestImport:
         assert response.status_code == 413
 
 
+class TestImportWords:
+    """向指定词书批量导入词条数组。"""
+
+    def _create_book(self, client: TestClient, token: str, code: str) -> dict:
+        return _create_book(client, token, code=code)
+
+    def _import_words(self, client: TestClient, token: str, book_id: int, payload):
+        return client.post(
+            f"/api/admin/wordbooks/{book_id}/words/import",
+            json=payload,
+            headers=headers(token),
+        )
+
+    def test_import_into_book_creates_words(self, client: TestClient, db: Session) -> None:
+        token = _admin_token(db, client)
+        book = self._create_book(client, token, code=unique_name("wi_new")[:32])
+        response = self._import_words(
+            client,
+            token,
+            book["id"],
+            [
+                good_word(),
+                good_word(
+                    word="ephemeral",
+                    example_en="Fame is ephemeral.",
+                    example_cn="名声是短暂的。",
+                ),
+            ],
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["applied"] is True
+        assert body["words_created"] == 2
+        assert body["words_total"] == 2
+
+        words = db.scalars(
+            select(Word).where(Word.wordbook_id == book["id"]).order_by(Word.sequence)
+        ).all()
+        assert len(words) == 2
+        assert words[0].word == "abandon"
+        assert words[1].word == "ephemeral"
+
+    def test_invalid_word_rejects_entire_batch(self, client: TestClient, db: Session) -> None:
+        token = _admin_token(db, client)
+        book = self._create_book(client, token, code=unique_name("wi_bad")[:32])
+        payload = [good_word(), good_word(word="ephemeral", phonetic="oops")]
+        response = self._import_words(client, token, book["id"], payload)
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "issues" in detail
+        assert any("ephemeral" in issue["message"] for issue in detail["issues"])
+        # 整批不写库：一条都没落
+        assert db.scalar(
+            select(func.count()).select_from(Word).where(Word.wordbook_id == book["id"])
+        ) == 0
+
+    def test_missing_book_404(self, client: TestClient, db: Session) -> None:
+        token = _admin_token(db, client)
+        response = self._import_words(client, token, 999_999, [good_word()])
+        assert response.status_code == 404
+
+    def test_reimport_updates_existing(self, client: TestClient, db: Session) -> None:
+        token = _admin_token(db, client)
+        book = self._create_book(client, token, code=unique_name("wi_re")[:32])
+        assert self._import_words(client, token, book["id"], [good_word()]).status_code == 200
+
+        updated = good_word(
+            word="abandon",
+            phonetic="/əˈbændən/",
+            translation="v. 放弃，抛弃",
+            example_en="They abandoned the plan.",
+            example_cn="他们放弃了那个计划。",
+        )
+        response = self._import_words(client, token, book["id"], [updated])
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["words_updated"] == 1
+        assert body["words_created"] == 0
+
+        words = db.scalars(
+            select(Word).where(Word.wordbook_id == book["id"])
+        ).all()
+        assert len(words) == 1
+        assert words[0].translation == "v. 放弃，抛弃"
+
+    def test_issue_field_is_locatable(self, client: TestClient, db: Session) -> None:
+        token = _admin_token(db, client)
+        book = self._create_book(client, token, code=unique_name("wi_loc")[:32])
+        payload = [good_word(), good_word(), good_word(phonetic="oops")]
+        response = self._import_words(client, token, book["id"], payload)
+        assert response.status_code == 422
+        fields = [issue["field"] for issue in response.json()["detail"]["issues"]]
+        assert any(field.startswith("words[2]") for field in fields)
+
+    def test_duplicate_word_in_batch_rejected(self, client: TestClient, db: Session) -> None:
+        """同一批文件里重复出现的词必须整批拒绝，不能插入两条。"""
+        token = _admin_token(db, client)
+        book = self._create_book(client, token, code=unique_name("wi_dup")[:32])
+        payload = [good_word(), good_word(word="ABANDON")]
+        response = self._import_words(client, token, book["id"], payload)
+
+        assert response.status_code == 422
+        issues = response.json()["detail"]["issues"]
+        assert any(issue["rule"] == "word_duplicate" for issue in issues)
+        assert db.scalar(
+            select(func.count()).select_from(Word).where(Word.wordbook_id == book["id"])
+        ) == 0
+
+
 class TestExport:
     def test_export_matches_seed_shape(self, client: TestClient, db: Session) -> None:
         token = _admin_token(db, client)

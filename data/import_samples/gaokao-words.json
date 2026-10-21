@@ -1,0 +1,359 @@
+[
+  {
+    "word": "advise",
+    "phonetic": "/ədˈvaɪz/",
+    "translation": "v. 建议，劝告",
+    "example_en": "I advise you to sleep earlier before the exam.",
+    "example_cn": "我建议你考试前早点睡。"
+  },
+  {
+    "word": "alike",
+    "phonetic": "/əˈlaɪk/",
+    "translation": "adj. 相像的 adv. 同样地",
+    "example_en": "The twins look alike but behave differently.",
+    "example_cn": "这对双胞胎长得很像，但行为不同。"
+  },
+  {
+    "word": "alive",
+    "phonetic": "/əˈlaɪv/",
+    "translation": "adj. 活着的，在世的",
+    "example_en": "The old tree is still alive after the storm.",
+    "example_cn": "风暴过后这棵老树仍然活着。"
+  },
+  {
+    "word": "amaze",
+    "phonetic": "/əˈmeɪz/",
+    "translation": "v. 使惊奇",
+    "example_en": "Her memory never fails to amaze me.",
+    "example_cn": "她的记忆力总让我惊叹。"
+  },
+  {
+    "word": "ancient",
+    "phonetic": "/ˈeɪnʃənt/",
+    "translation": "adj. 古代的，古老的",
+    "example_en": "We visited an ancient temple on the mountain.",
+    "example_cn": "我们参观了山上的一座古庙。"
+  },
+  {
+    "word": "arrive",
+    "phonetic": "/əˈraɪv/",
+    "translation": "v. 到达",
+    "example_en": "The train arrived ten minutes late.",
+    "example_cn": "火车晚点了十分钟。"
+  },
+  {
+    "word": "attend",
+    "phonetic": "/əˈtend/",
+    "translation": "v. 出席；参加",
+    "example_en": "Over two hundred students attended the lecture.",
+    "example_cn": "两百多名学生参加了讲座。"
+  },
+  {
+    "word": "attitude",
+    "phonetic": "/ˈætɪtjuːd/",
+    "translation": "n. 态度",
+    "example_en": "A positive attitude makes hard work easier.",
+    "example_cn": "积极的态度会让艰苦的工作变得轻松。"
+  },
+  {
+    "word": "attract",
+    "phonetic": "/əˈtrækt/",
+    "translation": "v. 吸引",
+    "example_en": "The bright colours attract many visitors.",
+    "example_cn": "鲜艳的颜色吸引了许多游客。"
+  },
+  {
+    "word": "beautiful",
+    "phonetic": "/ˈbjuːtɪfl/",
+    "translation": "adj. 美丽的",
+    "example_en": "The lake looks beautiful at sunset.",
+    "example_cn": "日落时分的湖面很美。"
+  },
+  {
+    "word": "belong",
+    "phonetic": "/bɪˈlɒŋ/",
+    "translation": "v. 属于",
+    "example_en": "This notebook belongs to my sister.",
+    "example_cn": "这个笔记本是我妹妹的。"
+  },
+  {
+    "word": "beneficial",
+    "phonetic": "/ˌbenɪˈfɪʃl/",
+    "translation": "adj. 有益的",
+    "example_en": "Reading daily is beneficial to your vocabulary.",
+    "example_cn": "每天阅读对你的词汇量有益。"
+  },
+  {
+    "word": "brave",
+    "phonetic": "/breɪv/",
+    "translation": "adj. 勇敢的",
+    "example_en": "It was brave of her to speak in public.",
+    "example_cn": "她敢在公众面前讲话，很有勇气。"
+  },
+  {
+    "word": "bright",
+    "phonetic": "/braɪt/",
+    "translation": "adj. 明亮的；聪明的",
+    "example_en": "The classroom is bright and airy.",
+    "example_cn": "这间教室明亮又通风。"
+  },
+  {
+    "word": "calm",
+    "phonetic": "/kɑːm/",
+    "translation": "adj. 冷静的 v. 使平静",
+    "example_en": "Try to stay calm during the test.",
+    "example_cn": "考试时尽量保持冷静。"
+  },
+  {
+    "word": "cancel",
+    "phonetic": "/ˈkænsl/",
+    "translation": "v. 取消",
+    "example_en": "They cancelled the match because of heavy rain.",
+    "example_cn": "由于大雨，他们取消了比赛。"
+  },
+  {
+    "word": "care",
+    "phonetic": "/keə(r)/",
+    "translation": "v./n. 关心，在乎",
+    "example_en": "She cares deeply about her students.",
+    "example_cn": "她非常关心自己的学生。"
+  },
+  {
+    "word": "catch",
+    "phonetic": "/kætʃ/",
+    "translation": "v. 抓住；赶上",
+    "example_en": "If we hurry, we can still catch the bus.",
+    "example_cn": "如果我们快一点，还能赶上公交车。"
+  },
+  {
+    "word": "celebrate",
+    "phonetic": "/ˈselɪbreɪt/",
+    "translation": "v. 庆祝",
+    "example_en": "We celebrated her birthday with a small party.",
+    "example_cn": "我们用一个小派对庆祝她的生日。"
+  },
+  {
+    "word": "chance",
+    "phonetic": "/tʃɑːns/",
+    "translation": "n. 机会，可能性",
+    "example_en": "This is a good chance to practise speaking.",
+    "example_cn": "这是练习口语的好机会。"
+  },
+  {
+    "word": "choose",
+    "phonetic": "/tʃuːz/",
+    "translation": "v. 选择",
+    "example_en": "You may choose any two from the list.",
+    "example_cn": "你可以从列表中任选两个。"
+  },
+  {
+    "word": "clever",
+    "phonetic": "/ˈklevə(r)/",
+    "translation": "adj. 聪明的",
+    "example_en": "That was a clever way to solve the problem.",
+    "example_cn": "那是个解决问题的巧妙办法。"
+  },
+  {
+    "word": "comfortable",
+    "phonetic": "/ˈkʌmftəbl/",
+    "translation": "adj. 舒适的",
+    "example_en": "The new chair is much more comfortable.",
+    "example_cn": "这把新椅子舒服多了。"
+  },
+  {
+    "word": "common",
+    "phonetic": "/ˈkɒmən/",
+    "translation": "adj. 常见的；共同的",
+    "example_en": "This mistake is common among beginners.",
+    "example_cn": "这个错误在初学者中很常见。"
+  },
+  {
+    "word": "complain",
+    "phonetic": "/kəmˈpleɪn/",
+    "translation": "v. 抱怨",
+    "example_en": "Nobody likes to complain all the time.",
+    "example_cn": "没人喜欢整天抱怨。"
+  },
+  {
+    "word": "complete",
+    "phonetic": "/kəmˈpliːt/",
+    "translation": "adj. 完整的 v. 完成",
+    "example_en": "Please complete the form before Friday.",
+    "example_cn": "请在周五之前填完表格。"
+  },
+  {
+    "word": "concerned",
+    "phonetic": "/kənˈsɜːnd/",
+    "translation": "adj. 担心的；有关的",
+    "example_en": "Her parents were concerned about her safety.",
+    "example_cn": "她的父母担心她的安全。"
+  },
+  {
+    "word": "confident",
+    "phonetic": "/ˈkɒnfɪdənt/",
+    "translation": "adj. 自信的",
+    "example_en": "He felt confident about the coming interview.",
+    "example_cn": "他对即将到来的面试很有信心。"
+  },
+  {
+    "word": "confuse",
+    "phonetic": "/kənˈfjuːz/",
+    "translation": "v. 使困惑",
+    "example_en": "The similar names often confuse new students.",
+    "example_cn": "相似的名字常让新同学困惑。"
+  },
+  {
+    "word": "connect",
+    "phonetic": "/kəˈnekt/",
+    "translation": "v. 连接",
+    "example_en": "A bridge connects the two sides of the river.",
+    "example_cn": "一座桥连接了河的两岸。"
+  },
+  {
+    "word": "consider",
+    "phonetic": "/kənˈsɪdə(r)/",
+    "translation": "v. 考虑；认为",
+    "example_en": "Please consider all the options carefully.",
+    "example_cn": "请仔细考虑所有选项。"
+  },
+  {
+    "word": "contain",
+    "phonetic": "/kənˈteɪn/",
+    "translation": "v. 包含",
+    "example_en": "This box contains old photographs.",
+    "example_cn": "这个盒子里装着旧照片。"
+  },
+  {
+    "word": "content",
+    "phonetic": "/ˈkɒntent/",
+    "translation": "n. 内容；目录",
+    "example_en": "The content of the book is well organised.",
+    "example_cn": "这本书的内容组织得很好。"
+  },
+  {
+    "word": "continue",
+    "phonetic": "/kənˈtɪnjuː/",
+    "translation": "v. 继续",
+    "example_en": "Please continue with your work.",
+    "example_cn": "请继续做你的工作。"
+  },
+  {
+    "word": "convenient",
+    "phonetic": "/kənˈviːniənt/",
+    "translation": "adj. 方便的",
+    "example_en": "The subway is the most convenient way here.",
+    "example_cn": "地铁是到这里最方便的方式。"
+  },
+  {
+    "word": "convince",
+    "phonetic": "/kənˈvɪns/",
+    "translation": "v. 使信服",
+    "example_en": "She convinced him to join the club.",
+    "example_cn": "她说服了他加入俱乐部。"
+  },
+  {
+    "word": "correct",
+    "phonetic": "/kəˈrekt/",
+    "translation": "adj. 正确的 v. 纠正",
+    "example_en": "The teacher corrected our pronunciation.",
+    "example_cn": "老师纠正了我们的发音。"
+  },
+  {
+    "word": "count",
+    "phonetic": "/kaʊnt/",
+    "translation": "v. 计数；重要",
+    "example_en": "Every small effort counts in the end.",
+    "example_cn": "到最后，每一份小小的努力都很重要。"
+  },
+  {
+    "word": "courage",
+    "phonetic": "/ˈkʌrɪdʒ/",
+    "translation": "n. 勇气",
+    "example_en": "It takes courage to admit a mistake.",
+    "example_cn": "承认错误需要勇气。"
+  },
+  {
+    "word": "cover",
+    "phonetic": "/ˈkʌvə(r)/",
+    "translation": "v. 覆盖 n. 封面",
+    "example_en": "Snow covered the ground overnight.",
+    "example_cn": "一夜之间雪覆盖了地面。"
+  },
+  {
+    "word": "create",
+    "phonetic": "/kriˈeɪt/",
+    "translation": "v. 创造",
+    "example_en": "Art can create a sense of calm.",
+    "example_cn": "艺术能营造一种平静的感觉。"
+  },
+  {
+    "word": "curious",
+    "phonetic": "/ˈkjʊəriəs/",
+    "translation": "adj. 好奇的",
+    "example_en": "Children are naturally curious about the world.",
+    "example_cn": "孩子天生对世界充满好奇。"
+  },
+  {
+    "word": "damage",
+    "phonetic": "/ˈdæmɪdʒ/",
+    "translation": "v./n. 损害",
+    "example_en": "The storm caused serious damage to the roof.",
+    "example_cn": "风暴对屋顶造成了严重损坏。"
+  },
+  {
+    "word": "dangerous",
+    "phonetic": "/ˈdeɪndʒərəs/",
+    "translation": "adj. 危险的",
+    "example_en": "It is dangerous to swim in this river.",
+    "example_cn": "在这条河里游泳很危险。"
+  },
+  {
+    "word": "decide",
+    "phonetic": "/dɪˈsaɪd/",
+    "translation": "v. 决定",
+    "example_en": "We finally decided to stay another day.",
+    "example_cn": "我们最终决定再待一天。"
+  },
+  {
+    "word": "decrease",
+    "phonetic": "/dɪˈkriːs/",
+    "translation": "v. 减少",
+    "example_en": "The number of visitors decreased last month.",
+    "example_cn": "上个月游客数量减少了。"
+  },
+  {
+    "word": "defeat",
+    "phonetic": "/dɪˈfiːt/",
+    "translation": "v./n. 击败，失败",
+    "example_en": "Our team suffered a narrow defeat.",
+    "example_cn": "我们队以微弱劣势落败。"
+  },
+  {
+    "word": "defend",
+    "phonetic": "/dɪˈfend/",
+    "translation": "v. 保卫；辩护",
+    "example_en": "She defended her idea with strong reasons.",
+    "example_cn": "她用充分的理由为自己的想法辩护。"
+  },
+  {
+    "word": "delay",
+    "phonetic": "/dɪˈleɪ/",
+    "translation": "v./n. 延迟，推迟",
+    "example_en": "The flight was delayed by thick fog.",
+    "example_cn": "航班因大雾延误了。"
+  },
+  {
+    "word": "deliver",
+    "phonetic": "/dɪˈlɪvə(r)/",
+    "translation": "v. 递送；发表",
+    "example_en": "He delivered a speech to the whole school.",
+    "example_cn": "他向全校发表了演讲。"
+  },
+  {
+    "word": "depend",
+    "phonetic": "/dɪˈpend/",
+    "translation": "v. 依靠；取决于",
+    "example_en": "Whether we go depends on the weather.",
+    "example_cn": "我们去不去取决于天气。"
+  }
+]

@@ -22,6 +22,7 @@ from app.services.word_admin_service import (
     create_wordbook,
     export_book,
     import_books,
+    import_words_into_book,
     list_wordbooks,
     list_words,
     purge_word,
@@ -35,6 +36,7 @@ from app.constants import STATUS_ACTIVE, STATUS_ARCHIVED
 from app.db import get_db
 from app.api.deps import require_admin
 from app.models.user import User
+from app.models.wordbook import WordBook
 
 router = APIRouter(prefix="/api/admin", tags=["admin-words"])
 
@@ -102,6 +104,48 @@ async def import_route(
         raise HTTPException(status_code=422, detail="导入文件不是有效 JSON") from exc
 
     result = _guard(import_books, db, admin, payload, request)
+    if not result.applied:
+        # 校验失败：一条都没写，issues 直接告诉使用者错在第几条哪个词
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": (
+                    f"导入文件校验未通过，共 {len(result.issues)} 处问题，未写入任何数据"
+                ),
+                "issues": [issue.model_dump() for issue in result.issues],
+            },
+        )
+    return result
+
+
+@router.post("/wordbooks/{book_id}/words/import", response_model=ImportResult)
+async def import_words_route(
+    book_id: int,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ImportResult:
+    """向指定词书批量导入词条数组：先校验，任一条不通过则整批不写库。"""
+    raw = await request.body()
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise HTTPException(status_code=413, detail="导入文件过大，最大 2MB")
+
+    try:
+        payload = json.loads(raw)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=422, detail="导入文件不是有效 JSON") from exc
+
+    # 兼容单条对象与数组两种直觉写法
+    if isinstance(payload, dict):
+        payload = [payload]
+    if not isinstance(payload, list):
+        raise HTTPException(status_code=422, detail="导入内容应为词条对象或数组")
+
+    book = db.get(WordBook, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="词书不存在")
+
+    result = _guard(import_words_into_book, db, admin, book, payload, request)
     if not result.applied:
         # 校验失败：一条都没写，issues 直接告诉使用者错在第几条哪个词
         raise HTTPException(

@@ -1,0 +1,401 @@
+[
+  {
+    "word": "abide",
+    "phonetic": "/əˈbaɪd/",
+    "translation": "v. 遵守；容忍",
+    "example_en": "All members must abide by the rules of the club.",
+    "example_cn": "所有成员都必须遵守俱乐部的规定。"
+  },
+  {
+    "word": "accrue",
+    "phonetic": "/əˈkruː/",
+    "translation": "v. 累积，逐渐增加",
+    "example_en": "Interest will accrue on the savings account.",
+    "example_cn": "储蓄账户会逐渐产生利息。"
+  },
+  {
+    "word": "acquit",
+    "phonetic": "/əˈkwɪt/",
+    "translation": "v. 宣判无罪；表现",
+    "example_en": "The jury acquitted him of all charges.",
+    "example_cn": "陪审团宣判他所有指控均不成立。"
+  },
+  {
+    "word": "adamant",
+    "phonetic": "/ˈædəmənt/",
+    "translation": "adj. 坚定不移的",
+    "example_en": "She remained adamant that the deadline could not move.",
+    "example_cn": "她坚持截止日期不能更改。"
+  },
+  {
+    "word": "adverse",
+    "phonetic": "/ˈædvɜːs/",
+    "translation": "adj. 不利的，相反的",
+    "example_en": "The new policy had an adverse effect on small businesses.",
+    "example_cn": "新政策对小企业产生了不利影响。"
+  },
+  {
+    "word": "admonish",
+    "phonetic": "/əˈmɒnɪʃ/",
+    "translation": "v. 劝告，告诫",
+    "example_en": "The teacher admonished him for being late again.",
+    "example_cn": "老师告诫他不要再迟到。"
+  },
+  {
+    "word": "alleviate",
+    "phonetic": "/əˈliːvieɪt/",
+    "translation": "v. 减轻，缓解",
+    "example_en": "The medicine alleviated the pain within minutes.",
+    "example_cn": "这种药在几分钟内就缓解了疼痛。"
+  },
+  {
+    "word": "allude",
+    "phonetic": "/əˈluːd/",
+    "translation": "v. 暗指，间接提到",
+    "example_en": "He never alluded to the argument in his speech.",
+    "example_cn": "他在演讲中从未提及那次争吵。"
+  },
+  {
+    "word": "ambivalent",
+    "phonetic": "/æmˈbɪvələnt/",
+    "translation": "adj. 矛盾的，犹豫不决的",
+    "example_en": "She felt ambivalent about moving abroad.",
+    "example_cn": "对于移居海外，她心情复杂。"
+  },
+  {
+    "word": "ample",
+    "phonetic": "/ˈæmpl/",
+    "translation": "adj. 充足的，丰富的",
+    "example_en": "There is ample evidence to support the theory.",
+    "example_cn": "有充分的证据支持这一理论。"
+  },
+  {
+    "word": "amplify",
+    "phonetic": "/ˈæmplɪfaɪ/",
+    "translation": "v. 放大，增强",
+    "example_en": "The speaker amplified her voice with a microphone.",
+    "example_cn": "演讲者用麦克风放大了自己的声音。"
+  },
+  {
+    "word": "anonymity",
+    "phonetic": "/ˌænəˈnɪməti/",
+    "translation": "n. 匿名",
+    "example_en": "The donor requested complete anonymity.",
+    "example_cn": "捐助者要求完全匿名。"
+  },
+  {
+    "word": "antagonize",
+    "phonetic": "/ænˈtæɡənaɪz/",
+    "translation": "v. 使敌对，激怒",
+    "example_en": "His rude remarks only antagonized the audience.",
+    "example_cn": "他粗鲁的言辞只是激怒了观众。"
+  },
+  {
+    "word": "appraise",
+    "phonetic": "/əˈpreɪz/",
+    "translation": "v. 评估，鉴定",
+    "example_en": "An expert was asked to appraise the painting.",
+    "example_cn": "一位专家受邀鉴定这幅画。"
+  },
+  {
+    "word": "arcane",
+    "phonetic": "/ɑːˈkeɪn/",
+    "translation": "adj. 神秘的，晦涩的",
+    "example_en": "The rules of the game seemed arcane to newcomers.",
+    "example_cn": "这个游戏的规则对新手来说似乎很晦涩。"
+  },
+  {
+    "word": "articulate",
+    "phonetic": "/ɑːˈtɪkjuleɪt/",
+    "translation": "v. 清楚表达 adj. 善于表达的",
+    "example_en": "She articulated her proposal with great clarity.",
+    "example_cn": "她非常清晰地阐述了自己的提案。"
+  },
+  {
+    "word": "ascend",
+    "phonetic": "/əˈsend/",
+    "translation": "v. 上升，攀登",
+    "example_en": "The trail ascends gradually to the ridge.",
+    "example_cn": "小径缓缓上升通往山脊。"
+  },
+  {
+    "word": "ascribe",
+    "phonetic": "/əˈskraɪb/",
+    "translation": "v. 归因于",
+    "example_en": "Critics ascribe the success of the film to its cast.",
+    "example_cn": "评论家把这部电影的成功归功于演员阵容。"
+  },
+  {
+    "word": "aspire",
+    "phonetic": "/əˈspaɪə(r)/",
+    "translation": "v. 渴望，追求",
+    "example_en": "Many young writers aspire to publish a novel.",
+    "example_cn": "许多年轻作家渴望出版小说。"
+  },
+  {
+    "word": "assiduous",
+    "phonetic": "/əˈsɪdjuəs/",
+    "translation": "adj. 勤勉的，刻苦的",
+    "example_en": "His assiduous preparation paid off in the interview.",
+    "example_cn": "他勤奋的准备在面试中得到了回报。"
+  },
+  {
+    "word": "austere",
+    "phonetic": "/ɒˈstɪə(r)/",
+    "translation": "adj. 朴素的；严厉的",
+    "example_en": "The monastery kept an austere daily routine.",
+    "example_cn": "修道院保持着朴素的日常作息。"
+  },
+  {
+    "word": "avarice",
+    "phonetic": "/ˈævərɪs/",
+    "translation": "n. 贪婪",
+    "example_en": "His avarice eventually destroyed the partnership.",
+    "example_cn": "他的贪婪最终毁掉了这段合作关系。"
+  },
+  {
+    "word": "avert",
+    "phonetic": "/əˈvɜːt/",
+    "translation": "v. 避免；转移（目光）",
+    "example_en": "Quick action averted a serious accident.",
+    "example_cn": "迅速的行动避免了一场严重事故。"
+  },
+  {
+    "word": "avid",
+    "phonetic": "/ˈævɪd/",
+    "translation": "adj. 热衷的，渴望的",
+    "example_en": "He is an avid reader of historical biographies.",
+    "example_cn": "他热衷阅读历史传记。"
+  },
+  {
+    "word": "baffle",
+    "phonetic": "/ˈbæfl/",
+    "translation": "v. 使困惑，难倒",
+    "example_en": "The puzzle continued to baffle the whole team.",
+    "example_cn": "这个谜题一直难住了整个团队。"
+  },
+  {
+    "word": "barren",
+    "phonetic": "/ˈbærən/",
+    "translation": "adj. 贫瘠的；不结果实的",
+    "example_en": "Nothing could grow on the barren hillside.",
+    "example_cn": "贫瘠的山坡上什么也长不出来。"
+  },
+  {
+    "word": "bleak",
+    "phonetic": "/bliːk/",
+    "translation": "adj. 荒凉的；无望的",
+    "example_en": "The outlook for the industry looks bleak.",
+    "example_cn": "该行业的前景看起来不容乐观。"
+  },
+  {
+    "word": "blunder",
+    "phonetic": "/ˈblʌndə(r)/",
+    "translation": "n./v. 大错，失足",
+    "example_en": "It was a costly blunder that no one noticed.",
+    "example_cn": "那是一个没人注意到的代价惨重的错误。"
+  },
+  {
+    "word": "bolster",
+    "phonetic": "/ˈbəʊlstə(r)/",
+    "translation": "v. 支持，加强",
+    "example_en": "The good results bolstered everyone's confidence.",
+    "example_cn": "好成绩增强了所有人的信心。"
+  },
+  {
+    "word": "breach",
+    "phonetic": "/briːtʃ/",
+    "translation": "n./v. 违反；突破",
+    "example_en": "Leaking the data was a serious breach of trust.",
+    "example_cn": "泄露数据是对信任的严重违背。"
+  },
+  {
+    "word": "brisk",
+    "phonetic": "/brɪsk/",
+    "translation": "adj. 轻快的；兴隆的",
+    "example_en": "Business was brisk during the holiday season.",
+    "example_cn": "假期期间生意很兴隆。"
+  },
+  {
+    "word": "brood",
+    "phonetic": "/bruːd/",
+    "translation": "v. 沉思，忧思 n. 一窝",
+    "example_en": "Do not brood over mistakes you cannot change.",
+    "example_cn": "不要为无法改变的错误而耿耿于怀。"
+  },
+  {
+    "word": "budge",
+    "phonetic": "/bʌdʒ/",
+    "translation": "v. 稍微移动；改变主意",
+    "example_en": "He refused to budge from his decision.",
+    "example_cn": "他拒绝改变自己的决定。"
+  },
+  {
+    "word": "bureaucratic",
+    "phonetic": "/ˌbjʊərəˈkrætɪk/",
+    "translation": "adj. 官僚的，繁文缛节的",
+    "example_en": "The application process was slow and bureaucratic.",
+    "example_cn": "申请流程缓慢且充满繁文缛节。"
+  },
+  {
+    "word": "buoyant",
+    "phonetic": "/ˈbɔɪənt/",
+    "translation": "adj. 轻快的；有浮力的",
+    "example_en": "Her buoyant mood lifted the whole office.",
+    "example_cn": "她轻快的情绪带动了整个办公室。"
+  },
+  {
+    "word": "buttress",
+    "phonetic": "/ˈbʌtrəs/",
+    "translation": "v. 支持，支撑",
+    "example_en": "The lawyer buttressed her argument with statistics.",
+    "example_cn": "律师用统计数据支撑自己的论点。"
+  },
+  {
+    "word": "calamity",
+    "phonetic": "/kəˈlæməti/",
+    "translation": "n. 灾难，祸患",
+    "example_en": "The flood was the worst calamity in a century.",
+    "example_cn": "这场洪水是一个世纪以来最严重的灾难。"
+  },
+  {
+    "word": "callous",
+    "phonetic": "/ˈkæləs/",
+    "translation": "adj. 冷漠的，无同情心的",
+    "example_en": "His callous remarks hurt everyone in the room.",
+    "example_cn": "他冷漠的言语刺痛了在场的每一个人。"
+  },
+  {
+    "word": "candour",
+    "phonetic": "/ˈkændə(r)/",
+    "translation": "n. 坦率，真诚",
+    "example_en": "She spoke with refreshing candour about her failures.",
+    "example_cn": "她以令人耳目一新的坦率谈及自己的失败。"
+  },
+  {
+    "word": "catastrophe",
+    "phonetic": "/kəˈtæstrəfi/",
+    "translation": "n. 大灾难",
+    "example_en": "The oil spill was an environmental catastrophe.",
+    "example_cn": "那次漏油是一场环境大灾难。"
+  },
+  {
+    "word": "caustic",
+    "phonetic": "/ˈkɔːstɪk/",
+    "translation": "adj. 腐蚀性的；尖刻的",
+    "example_en": "His caustic wit made him difficult to work with.",
+    "example_cn": "他尖刻的机智让人难以共事。"
+  },
+  {
+    "word": "censure",
+    "phonetic": "/ˈsenʃə(r)/",
+    "translation": "v./n. 责难，指责",
+    "example_en": "The committee voted to censure the official.",
+    "example_cn": "委员会投票谴责了这名官员。"
+  },
+  {
+    "word": "chagrin",
+    "phonetic": "/ˈʃæɡrɪn/",
+    "translation": "n. 懊恼，沮丧",
+    "example_en": "To her chagrin, the flight was cancelled again.",
+    "example_cn": "令她懊恼的是，航班又取消了。"
+  },
+  {
+    "word": "chronic",
+    "phonetic": "/ˈkrɒnɪk/",
+    "translation": "adj. 慢性的；长期的",
+    "example_en": "He has suffered from chronic back pain for years.",
+    "example_cn": "他常年受慢性背痛困扰。"
+  },
+  {
+    "word": "circumspect",
+    "phonetic": "/ˈsɜːkəmspekt/",
+    "translation": "adj. 谨慎的，慎重的",
+    "example_en": "Be circumspect when sharing personal details online.",
+    "example_cn": "在网上分享个人信息时要谨慎。"
+  },
+  {
+    "word": "clandestine",
+    "phonetic": "/klænˈdestɪn/",
+    "translation": "adj. 秘密的，暗中的",
+    "example_en": "They held a clandestine meeting after midnight.",
+    "example_cn": "他们在午夜后举行了一次秘密会议。"
+  },
+  {
+    "word": "coalesce",
+    "phonetic": "/ˌkəʊəˈles/",
+    "translation": "v. 联合，合并",
+    "example_en": "Several small groups coalesced into one movement.",
+    "example_cn": "几个小团体合并成了一场运动。"
+  },
+  {
+    "word": "coherent",
+    "phonetic": "/kəʊˈhɪərənt/",
+    "translation": "adj. 连贯的；有条理的",
+    "example_en": "Please present a coherent argument, not a list of facts.",
+    "example_cn": "请给出连贯的论证，而不是罗列事实。"
+  },
+  {
+    "word": "commemorate",
+    "phonetic": "/kəˈmeməreɪt/",
+    "translation": "v. 纪念，庆祝",
+    "example_en": "The town built a statue to commemorate the heroes.",
+    "example_cn": "小镇建了一座雕像来纪念英雄。"
+  },
+  {
+    "word": "commence",
+    "phonetic": "/kəˈmens/",
+    "translation": "v. 开始，着手",
+    "example_en": "The ceremony will commence at nine sharp.",
+    "example_cn": "典礼将于九点整开始。"
+  },
+  {
+    "word": "complacent",
+    "phonetic": "/kəmˈpleɪsnt/",
+    "translation": "adj. 自满的，得意的",
+    "example_en": "Success can make a company dangerously complacent.",
+    "example_cn": "成功会让公司陷入危险的自满。"
+  },
+  {
+    "word": "concede",
+    "phonetic": "/kənˈsiːd/",
+    "translation": "v. 承认；让步",
+    "example_en": "He finally conceded that the plan had failed.",
+    "example_cn": "他最终承认计划失败了。"
+  },
+  {
+    "word": "conciliatory",
+    "phonetic": "/kənˈsɪliətəri/",
+    "translation": "adj. 安抚的，调和的",
+    "example_en": "She took a conciliatory tone during the negotiation.",
+    "example_cn": "谈判中她采取了和解的口吻。"
+  },
+  {
+    "word": "concise",
+    "phonetic": "/kənˈsaɪs/",
+    "translation": "adj. 简明的，简练的",
+    "example_en": "Keep your summary concise and to the point.",
+    "example_cn": "把你的总结写得简明扼要。"
+  },
+  {
+    "word": "condone",
+    "phonetic": "/kənˈdəʊn/",
+    "translation": "v. 宽容，纵容",
+    "example_en": "The school will not condone cheating of any kind.",
+    "example_cn": "学校绝不纵容任何形式的作弊。"
+  },
+  {
+    "word": "confide",
+    "phonetic": "/kənˈfaɪd/",
+    "translation": "v. 吐露，信任",
+    "example_en": "She confided her worries to her closest friend.",
+    "example_cn": "她向最要好的朋友吐露了自己的烦恼。"
+  },
+  {
+    "word": "congregate",
+    "phonetic": "/ˈkɒŋɡrɪɡeɪt/",
+    "translation": "v. 聚集，集合",
+    "example_en": "Tourists congregate around the old clock tower.",
+    "example_cn": "游客聚集在古老的钟楼周围。"
+  }
+]

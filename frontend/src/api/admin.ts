@@ -148,6 +148,23 @@ export async function importWordbooks(payload: unknown): Promise<WordbookImportR
   return data;
 }
 
+/**
+ * 向指定词书批量导入词条数组（作用于当前词书，不接收词书元信息）。
+ *
+ * 后端先校验后入库，任一条不通过整批不写，422 时把 issues 塞在 detail 里；
+ * 结构化错误由 extractIssues 从异常里取出，按 field 定位到「第几条哪个词」。
+ */
+export async function importWordsIntoBook(
+  bookId: number,
+  payload: unknown
+): Promise<WordbookImportResult> {
+  const { data } = await http.post<WordbookImportResult>(
+    `/api/admin/wordbooks/${bookId}/words/import`,
+    payload
+  );
+  return data;
+}
+
 export async function exportWordbook(bookId: number): Promise<Record<string, unknown>> {
   const { data } = await http.get(`/api/admin/wordbooks/${bookId}/export`);
   return data;

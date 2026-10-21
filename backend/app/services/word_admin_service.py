@@ -502,6 +502,119 @@ def import_books(
     return ImportResult(applied=True, **stats)
 
 
+def import_words_into_book(
+    db: Session,
+    actor: User,
+    book: WordBook,
+    words: list[dict],
+    request: Request | None = None,
+) -> ImportResult:
+    """向指定词书批量导入词条（词条数组，不含词书元信息）。
+
+    与 import_books 同一套「校验先行、任一条不过整批不写库」语义：
+    - 词条本身用 validate_word 逐条校验，issues 定位到 words[i].xxx；
+    - 仅当全部通过才写入，已存在的词按 word 小写去重、内容以导入文件为准，
+      只回填五个内容字段并置为可用，不动用户练习记录。
+    """
+    if not words:
+        raise AdminError("导入内容为空", status_code=400)
+
+    issues: list[ValidationIssueOut] = []
+    seen: dict[str, int] = {}
+    for index, item in enumerate(words):
+        if not isinstance(item, dict):
+            issues.append(
+                ValidationIssueOut(
+                    rule="word_not_object",
+                    field=f"words[{index}]",
+                    message=f"第 {index + 1} 条不是对象",
+                )
+            )
+            continue
+        label = str(item.get("word") or f"#{index + 1}")
+        key = str(item.get("word") or "").strip().lower()
+        if key and key in seen:
+            issues.append(
+                ValidationIssueOut(
+                    rule="word_duplicate",
+                    field=f"words[{index}].word",
+                    message=f"[{label}] 与第 {seen[key] + 1} 条重复",
+                )
+            )
+        elif key:
+            seen[key] = index
+        for issue in validate_word(item).issues:
+            issues.append(
+                ValidationIssueOut(
+                    rule=issue.rule,
+                    field=f"words[{index}].{issue.field}",
+                    message=f"[{label}] {issue.message}",
+                )
+            )
+    if issues:
+        return ImportResult(applied=False, issues=issues)
+
+    existing = {
+        row.word.strip().lower(): row
+        for row in db.scalars(select(Word).where(Word.wordbook_id == book.id)).all()
+    }
+    max_sequence = (
+        db.scalar(select(func.max(Word.sequence)).where(Word.wordbook_id == book.id)) or -1
+    )
+
+    words_created = 0
+    words_updated = 0
+    for sequence, item in enumerate(words, start=max_sequence + 1):
+        key = str(item["word"]).strip().lower()
+        target = existing.get(key)
+        if target is None:
+            db.add(
+                Word(
+                    wordbook_id=book.id,
+                    word=str(item["word"]).strip(),
+                    phonetic=item["phonetic"],
+                    translation=item["translation"],
+                    example_en=item["example_en"],
+                    example_cn=item["example_cn"],
+                    sequence=sequence,
+                    status=STATUS_ACTIVE,
+                )
+            )
+            words_created += 1
+        else:
+            # 重新导入 = 要它回来；内容以文件为准
+            target.phonetic = item["phonetic"]
+            target.translation = item["translation"]
+            target.example_en = item["example_en"]
+            target.example_cn = item["example_cn"]
+            target.status = STATUS_ACTIVE
+            words_updated += 1
+
+    db.flush()
+    _refresh_total_words(db, book)
+    audit_service.record(
+        db,
+        actor=actor,
+        action="wordbook.import_words",
+        target_type="wordbook",
+        target_id=book.id,
+        detail={
+            "code": book.code,
+            "words_in_file": len(words),
+            "words_created": words_created,
+            "words_updated": words_updated,
+        },
+        affected_rows=words_created + words_updated,
+        request=request,
+    )
+    db.commit()
+    return ImportResult(
+        applied=True,
+        words_created=words_created,
+        words_updated=words_updated,
+        words_total=len(words),
+    )
+
 def export_book(db: Session, book_id: int) -> dict:
     """导出为 data/*.json 同构结构，便于写回仓库做版本管理。
 
