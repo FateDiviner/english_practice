@@ -28,7 +28,7 @@
 - 测试：`conda activate english_practice && cd backend && uv run pytest -q`
 - Lint：`uv run ruff check .`
 - 格式检查：`uv run ruff format --check .`
-- Node：20 LTS；前端依赖与脚本使用 `pnpm`。
+- Node：22 LTS + pnpm 10；前端依赖与脚本使用 `pnpm`。Vite 7 要求 Node 20.19+ 或 22.12+，当前 Node 22.19 满足。
 - 数据库：MySQL 8 本地 Docker 运行，连接信息通过 `.env` 配置。
 - 后端异步驱动：`asyncmy`。
 - JWT：`python-jose[cryptography]`。

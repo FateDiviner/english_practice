@@ -66,6 +66,7 @@
 
 ## 6. 当前前端命令
 
+- 环境：Node 22 LTS + pnpm 10；Vite 7 要求 Node 20.19+ 或 22.12+，当前 Node 22.19 满足。
 - 安装依赖：`cd frontend && pnpm install`
 - 开发启动：`cd frontend && pnpm dev`
 - 构建：`cd frontend && pnpm build`
