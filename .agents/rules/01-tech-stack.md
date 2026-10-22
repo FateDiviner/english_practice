@@ -32,6 +32,7 @@
 - 数据库：MySQL 8 本地 Docker 运行，连接信息通过 `.env` 配置。
 - 后端异步驱动：`asyncmy`。
 - JWT：`python-jose[cryptography]`。
+- 密码哈希：`bcrypt`（认证必需依赖）。
 - 后端测试：`pytest`、`pytest-asyncio`、`httpx`。
 - 前端 Lint 与格式化：`eslint`、`prettier`。
 - 以上技术选型均已锁定，不得自行替换。

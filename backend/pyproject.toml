@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "alembic",
     "asyncmy",
+    "bcrypt>=5.0.0",
     "fastapi",
     "pydantic",
     "pydantic-settings",
