@@ -62,6 +62,7 @@
 - 启动：`conda activate english_practice && cd backend && uv run uvicorn app.main:app --reload --port 8000`
 - 测试：`conda activate english_practice && cd backend && uv run pytest -q`
 - Lint：`uv run ruff check .`
+- 管理员 seed：`cd backend && conda run -n english_practice uv run python -m scripts.create_admin`
 
 
 Alembic 命令：
