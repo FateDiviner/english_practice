@@ -64,6 +64,13 @@
 - Lint：`uv run ruff check .`
 
 
+环境变量配置：
+
+- 复制示例文件：`cd backend` 后执行 `Copy-Item .env.example .env`。
+- 按本机实际环境填写 `DATABASE_URL`、`JWT_SECRET` 等配置；不要提交 `.env`。
+- `ADMIN_USERNAME`、`ADMIN_EMAIL`、`ADMIN_PASSWORD` 是后续 seed 脚本的占位配置；本轮不实现 seed 脚本。
+- `backend/.gitignore` 已忽略 `.env`。
+
 ## 6. 当前前端命令
 
 - 环境：Node 22 LTS + pnpm 10；Vite 7 要求 Node 20.19+ 或 22.12+，当前 Node 22.19 满足。
