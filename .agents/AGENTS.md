@@ -64,6 +64,12 @@
 - Lint：`uv run ruff check .`
 
 
+Alembic 命令：
+
+- 新建迁移：`cd backend && conda run -n english_practice uv run alembic revision -m "describe_change"`
+- 升级到最新：`cd backend && conda run -n english_practice uv run alembic upgrade head`
+- 降级到初始：`cd backend && conda run -n english_practice uv run alembic downgrade base`
+
 环境变量配置：
 
 - 复制示例文件：`cd backend` 后执行 `Copy-Item .env.example .env`。
