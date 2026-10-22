@@ -11,6 +11,7 @@ from app.schemas.common import ApiResponse
 
 logger = logging.getLogger(__name__)
 
+ERROR_CODE_NOT_FOUND = 40401
 ERROR_CODE_UNAUTHENTICATED = 40101
 ERROR_CODE_FORBIDDEN = 40301
 ERROR_CODE_CONFLICT = 40901
