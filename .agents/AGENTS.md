@@ -45,11 +45,20 @@
 
 ## 5. 当前后端命令
 
-Conda 环境名：`english_practice`，Python 3.11。
+环境分工：
+
+- Conda 只负责 Python 解释器环境：环境名 `english_practice`，Python 3.11。
+- uv 只负责依赖安装与锁定：在已激活的 Conda 环境中执行 `uv sync`，新增依赖使用 `uv add`。
+- `uv.lock` 是唯一依赖锁定来源，必须提交。
+- Conda 环境必须设置 `UV_PROJECT_ENVIRONMENT=<该环境前缀>`，确保 `uv sync` 和 `uv run` 使用 Conda 环境，不创建或使用 `backend/.venv`。
+
+命令：
 
 - 创建环境：`conda create -n english_practice -c conda-forge --override-channels python=3.11`
-- 安装依赖：按 `backend/pyproject.toml` 清单使用 `conda run -n english_practice python -m pip install` 安装。
-- 测试：`cd backend` 后执行 `conda run -n english_practice python -m pytest -q`
-- Lint：`cd backend` 后执行 `conda run -n english_practice python -m ruff check .`
-- 格式检查：`cd backend` 后执行 `conda run -n english_practice python -m ruff format --check .`
-- 启动：`cd backend` 后执行 `conda run -n english_practice python -m uvicorn app.main:app --reload --port 8000`
+- 绑定 uv 环境：`conda env config vars set "UV_PROJECT_ENVIRONMENT=<该环境前缀>" -n english_practice`，随后重新激活环境。
+- 安装/同步依赖：`conda activate english_practice && cd backend && uv sync`
+- 新增依赖：`conda activate english_practice && cd backend && uv add <package>`
+- 启动：`conda activate english_practice && cd backend && uv run uvicorn app.main:app --reload --port 8000`
+- 测试：`conda activate english_practice && cd backend && uv run pytest -q`
+- Lint：`uv run ruff check .`
+- 格式检查：`uv run ruff format --check .`

@@ -21,12 +21,17 @@
 
 ## 开发环境与工具链锁定
 
-- Python 3.11，Node 20 LTS。
-- 后端使用 `pyproject.toml` 声明依赖；使用 Conda 环境 `english_practice`（Python 3.11）运行和测试；前端使用 `pnpm`。
-- MySQL 8 本地 Docker 运行，数据库连接信息统一通过 `.env` 配置。
-- 后端异步驱动使用 `asyncmy`。
-- JWT 使用 `python-jose[cryptography]`。
-- 后端测试使用 `pytest`、`pytest-asyncio`、`httpx`；后端 Lint 使用 `ruff`。
-- 前端 Lint 与格式化使用 `eslint`、`prettier`。
+- 环境：Conda 只负责 Python 解释器环境，创建 `english_practice`（Python 3.11）。
+- 依赖：uv 只负责依赖安装与锁定；在已激活的 Conda 环境中执行 `uv sync`，新增依赖使用 `uv add`；`uv.lock` 是唯一依赖锁定来源并提交。
+- 双环境约束：Conda 环境设置 `UV_PROJECT_ENVIRONMENT=<该环境前缀>`，使 `uv sync` 和 `uv run` 使用 Conda 环境，不创建或使用 `backend/.venv`。
+- 启动：`conda activate english_practice && cd backend && uv run uvicorn app.main:app --reload --port 8000`
+- 测试：`conda activate english_practice && cd backend && uv run pytest -q`
+- Lint：`uv run ruff check .`
+- 格式检查：`uv run ruff format --check .`
+- Node：20 LTS；前端依赖与脚本使用 `pnpm`。
+- 数据库：MySQL 8 本地 Docker 运行，连接信息通过 `.env` 配置。
+- 后端异步驱动：`asyncmy`。
+- JWT：`python-jose[cryptography]`。
+- 后端测试：`pytest`、`pytest-asyncio`、`httpx`。
+- 前端 Lint 与格式化：`eslint`、`prettier`。
 - 以上技术选型均已锁定，不得自行替换。
-- `uv.lock` 仅用于锁定依赖版本；Python 3.11 环境、启动、测试和 lint 统一由 Conda 管理。
