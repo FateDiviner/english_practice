@@ -151,3 +151,11 @@
 | created_at | DATETIME | 否 | now | |
 
 索引：idx_ai_messages_conversation
+
+## 外键删除策略
+
+- `practice_sessions.user_id -> users.id`：`ON DELETE CASCADE`
+- `practice_records.session_id -> practice_sessions.id`：`ON DELETE CASCADE`
+- `wrong_words.user_id -> users.id`：`ON DELETE CASCADE`
+- 其余外键默认使用 `ON DELETE RESTRICT`
+- `practice_records` 没有 `user_id` 字段，用户删除通过 `user -> practice_sessions -> practice_records` 的会话链路级联清理
