@@ -121,27 +121,12 @@ async def test_update_wordbook_status(client: AsyncClient) -> None:
     assert response.json()["data"]["status"] == "published"
 
 
-async def test_delete_wordbook_with_words_requires_force(client: AsyncClient) -> None:
-    headers = await create_admin_headers(client, "delete_conflict")
-    wordbook = await create_wordbook(client, headers, "delete_conflict")
-    await add_word(wordbook["id"], "conflict")
+async def test_delete_empty_wordbook_succeeds(client: AsyncClient) -> None:
+    headers = await create_admin_headers(client, "delete_empty")
+    wordbook = await create_wordbook(client, headers, "delete_empty")
 
     response = await client.delete(
         f"/api/v1/admin/wordbooks/{wordbook['id']}",
-        headers=headers,
-    )
-
-    assert response.status_code == 409
-    assert response.json()["code"] == 40901
-
-
-async def test_force_delete_wordbook_with_words(client: AsyncClient) -> None:
-    headers = await create_admin_headers(client, "delete_force")
-    wordbook = await create_wordbook(client, headers, "delete_force")
-    await add_word(wordbook["id"], "force")
-
-    response = await client.delete(
-        f"/api/v1/admin/wordbooks/{wordbook['id']}?force=true",
         headers=headers,
     )
 
@@ -149,10 +134,34 @@ async def test_force_delete_wordbook_with_words(client: AsyncClient) -> None:
     assert response.json()["data"] == {"deleted": True}
 
     async with async_session_factory() as session:
+        stored = await session.scalar(select(Wordbook).where(Wordbook.id == wordbook["id"]))
+        assert stored is None
+
+
+async def test_delete_wordbook_with_words_always_returns_409(client: AsyncClient) -> None:
+    headers = await create_admin_headers(client, "delete_conflict")
+    wordbook = await create_wordbook(client, headers, "delete_conflict")
+    await add_word(wordbook["id"], "conflict")
+
+    normal_response = await client.delete(
+        f"/api/v1/admin/wordbooks/{wordbook['id']}",
+        headers=headers,
+    )
+    force_query_response = await client.delete(
+        f"/api/v1/admin/wordbooks/{wordbook['id']}?force=true",
+        headers=headers,
+    )
+
+    assert normal_response.status_code == 409
+    assert normal_response.json()["code"] == 40901
+    assert force_query_response.status_code == 409
+    assert force_query_response.json()["code"] == 40901
+
+    async with async_session_factory() as session:
         word_count = await session.scalar(
             select(func.count(Word.id)).where(Word.wordbook_id == wordbook["id"]),
         )
-        assert word_count == 0
+        assert word_count == 1
 
 
 async def test_list_wordbooks_returns_word_count(client: AsyncClient) -> None:

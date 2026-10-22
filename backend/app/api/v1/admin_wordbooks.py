@@ -67,10 +67,9 @@ async def update_wordbook_endpoint(
 async def delete_wordbook_endpoint(
     wordbook_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
-    force: bool = False,
 ) -> ApiResponse[WordbookDeleteOut]:
-    """删除词书；有单词时必须传 force=true。"""
-    await delete_wordbook(session, wordbook_id, force=force)
+    """删除空词书；存在单词时返回冲突，不做级联删除。"""
+    await delete_wordbook(session, wordbook_id)
     return ApiResponse[WordbookDeleteOut](
         code=0, message="ok", data=WordbookDeleteOut(deleted=True)
     )

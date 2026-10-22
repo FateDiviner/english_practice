@@ -1,4 +1,4 @@
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,9 +81,8 @@ async def update_wordbook(
 async def delete_wordbook(
     session: AsyncSession,
     wordbook_id: int,
-    force: bool = False,
 ) -> None:
-    """删除词书；有单词时必须显式 force，并先删除关联单词。"""
+    """仅允许删除空词书；存在单词时必须先清空。"""
     wordbook = await get_wordbook(session, wordbook_id)
     if wordbook is None:
         raise AppError(404, 404, "词书不存在")
@@ -91,12 +90,10 @@ async def delete_wordbook(
     word_count = await session.scalar(
         select(func.count(Word.id)).where(Word.wordbook_id == wordbook_id),
     )
-    if word_count and not force:
-        raise AppError(409, ERROR_CODE_CONFLICT, "词书包含单词，需 force=true 删除")
+    if word_count:
+        raise AppError(409, ERROR_CODE_CONFLICT, "请先清空词书内单词")
 
     try:
-        if force:
-            await session.execute(delete(Word).where(Word.wordbook_id == wordbook_id))
         await session.delete(wordbook)
         await session.commit()
     except IntegrityError as exc:

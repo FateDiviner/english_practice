@@ -26,6 +26,7 @@ P2：F11 发音播放、F12 导入进度、F13 数据概览
 ### F2 管理员创建词书
 输入：name（必填）、description、level。
 规则：默认 draft，可 published/archived；仅 published 对用户可见。
+删除规则：词书下无单词时可正常删除；存在单词时返回 409，必须先清空词书内单词，不支持 force 级联删除。
 
 ### F3 管理员导入单词
 输入：目标词书 id、Excel/CSV（spelling 必填，其余可选）。

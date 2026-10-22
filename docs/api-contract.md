@@ -94,7 +94,7 @@
 
 ### DELETE /admin/wordbooks/{id}
 响应 data：{ deleted: true }
-规则：有单词时需确认参数 force=true
+规则：仅词书下无单词时可删除；存在单词时返回 409，需先清空词书内单词，不支持 force 级联删除。
 
 ### POST /admin/wordbooks/{id}/words
 请求：{ spelling, phonetic_uk?, phonetic_us?, meaning_cn?, part_of_speech?, example_en?, example_cn?, audio_url?, sort_order? }
