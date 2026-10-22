@@ -51,6 +51,7 @@
 - uv 只负责依赖安装与锁定：在已激活的 Conda 环境中执行 `uv sync`，新增依赖使用 `uv add`。
 - `uv.lock` 是唯一依赖锁定来源，必须提交。
 - Conda 环境必须设置 `UV_PROJECT_ENVIRONMENT=<该环境前缀>`，确保 `uv sync` 和 `uv run` 使用 Conda 环境，不创建或使用 `backend/.venv`。
+- 证书：Conda 环境的 `SSL_CERT_FILE` 应指向 `<env>\Library\ssl\cacert.pem`，`SSL_CERT_DIR` 应指向 `<env>\Library\ssl\certs`；`certs` 目录必须包含证书文件，若只有 `.keep`，将 `Library\ssl\cacert.pem` 复制到 `Library\ssl\certs\cacert.pem`。PowerShell 示例：`$env:SSL_CERT_FILE = "$env:CONDA_PREFIX\Library\ssl\cacert.pem"`，`$env:SSL_CERT_DIR = "$env:CONDA_PREFIX\Library\ssl\certs"`。
 
 命令：
 
