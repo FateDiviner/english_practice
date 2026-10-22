@@ -2,7 +2,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exception_handlers import ERROR_CODE_CONFLICT, ERROR_CODE_VALIDATION, AppError
+from app.core.exception_handlers import (
+    ERROR_CODE_CONFLICT,
+    ERROR_CODE_NOT_FOUND,
+    ERROR_CODE_VALIDATION,
+    AppError,
+)
 from app.models.word import Word
 from app.models.wordbook import Wordbook
 from app.schemas.wordbook import WordbookCreateIn, WordbookUpdateIn
@@ -99,3 +104,78 @@ async def delete_wordbook(
     except IntegrityError as exc:
         await session.rollback()
         raise AppError(409, ERROR_CODE_CONFLICT, "词书存在关联数据，无法删除") from exc
+
+
+async def get_published_wordbook(session: AsyncSession, wordbook_id: int) -> Wordbook:
+    """只允许读取 published 词书。"""
+    wordbook = await get_wordbook(session, wordbook_id)
+    if wordbook is None or wordbook.status != "published":
+        raise AppError(404, ERROR_CODE_NOT_FOUND, "词书不存在")
+    return wordbook
+
+
+async def list_published_wordbooks(
+    session: AsyncSession,
+    page: int,
+    page_size: int,
+) -> tuple[list[tuple[Wordbook, int]], int]:
+    """分页查询 published 词书并附带单词数。"""
+    word_count = (
+        select(func.count(Word.id))
+        .where(Word.wordbook_id == Wordbook.id)
+        .correlate(Wordbook)
+        .scalar_subquery()
+    )
+    conditions = [Wordbook.status == "published"]
+    result = await session.execute(
+        select(Wordbook, word_count.label("word_count"))
+        .where(*conditions)
+        .order_by(Wordbook.created_at.desc(), Wordbook.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size),
+    )
+    total = (
+        await session.scalar(
+            select(func.count(Wordbook.id)).where(*conditions),
+        )
+        or 0
+    )
+    return list(result.all()), total
+
+
+async def get_published_wordbook_detail(
+    session: AsyncSession,
+    wordbook_id: int,
+) -> tuple[Wordbook, int]:
+    """返回 published 词书详情及单词数。"""
+    wordbook = await get_published_wordbook(session, wordbook_id)
+    word_count = (
+        await session.scalar(
+            select(func.count(Word.id)).where(Word.wordbook_id == wordbook.id),
+        )
+        or 0
+    )
+    return wordbook, word_count
+
+
+async def list_published_words(
+    session: AsyncSession,
+    wordbook_id: int,
+    page: int,
+    page_size: int,
+    mastery: int | None = None,
+) -> tuple[list[Word], int]:
+    """分页查询 published 词书中的单词；mastery 暂未实现，仅接收参数。"""
+    await get_published_wordbook(session, wordbook_id)
+    # word_progress 尚未建表，mastery 过滤暂时忽略，响应统一返回 null。
+    _ = mastery
+    conditions = [Word.wordbook_id == wordbook_id]
+    result = await session.execute(
+        select(Word)
+        .where(*conditions)
+        .order_by(Word.sort_order.asc(), Word.id.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size),
+    )
+    total = await session.scalar(select(func.count(Word.id)).where(*conditions)) or 0
+    return list(result.scalars().all()), total

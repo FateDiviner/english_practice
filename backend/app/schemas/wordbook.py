@@ -66,3 +66,32 @@ class WordbookListOut(BaseModel):
 
 class WordbookDeleteOut(BaseModel):
     deleted: bool
+
+
+class UserWordbookProgress(BaseModel):
+    mastered: int
+    total: int
+
+
+class UserWordbookItem(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    level: str | None
+    word_count: int
+    my_progress: UserWordbookProgress
+
+
+class UserWordbookDetail(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    level: str | None
+    word_count: int
+
+
+class UserWordbookListOut(BaseModel):
+    items: list[UserWordbookItem]
+    total: int
+    page: int
+    page_size: int

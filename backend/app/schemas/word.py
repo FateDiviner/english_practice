@@ -82,3 +82,20 @@ class WordListOut(BaseModel):
 
 class WordDeleteOut(BaseModel):
     deleted: bool
+
+
+class UserWordItem(BaseModel):
+    id: int
+    spelling: str
+    phonetic_uk: str | None
+    phonetic_us: str | None
+    meaning_cn: str | None
+    part_of_speech: str | None
+    mastery_level: int | None = None
+
+
+class UserWordListOut(BaseModel):
+    items: list[UserWordItem]
+    total: int
+    page: int
+    page_size: int
