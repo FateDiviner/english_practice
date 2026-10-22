@@ -62,4 +62,13 @@
 - 启动：`conda activate english_practice && cd backend && uv run uvicorn app.main:app --reload --port 8000`
 - 测试：`conda activate english_practice && cd backend && uv run pytest -q`
 - Lint：`uv run ruff check .`
-- 格式检查：`uv run ruff format --check .`
+
+
+## 6. 当前前端命令
+
+- 安装依赖：`cd frontend && pnpm install`
+- 开发启动：`cd frontend && pnpm dev`
+- 构建：`cd frontend && pnpm build`
+- Lint：`cd frontend && pnpm lint`
+- 格式检查：`cd frontend && pnpm format:check`
+- 依赖锁定文件：`frontend/pnpm-lock.yaml`，必须提交。
