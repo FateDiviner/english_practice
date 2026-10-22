@@ -22,10 +22,11 @@
 ## 开发环境与工具链锁定
 
 - Python 3.11，Node 20 LTS。
-- 后端使用 `pyproject.toml`，依赖管理使用 `uv`；前端使用 `pnpm`。
+- 后端使用 `pyproject.toml` 声明依赖；使用 Conda 环境 `english_practice`（Python 3.11）运行和测试；前端使用 `pnpm`。
 - MySQL 8 本地 Docker 运行，数据库连接信息统一通过 `.env` 配置。
 - 后端异步驱动使用 `asyncmy`。
 - JWT 使用 `python-jose[cryptography]`。
 - 后端测试使用 `pytest`、`pytest-asyncio`、`httpx`；后端 Lint 使用 `ruff`。
 - 前端 Lint 与格式化使用 `eslint`、`prettier`。
 - 以上技术选型均已锁定，不得自行替换。
+- `uv.lock` 仅用于锁定依赖版本；Python 3.11 环境、启动、测试和 lint 统一由 Conda 管理。

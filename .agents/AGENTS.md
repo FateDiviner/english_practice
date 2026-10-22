@@ -42,3 +42,14 @@
 - 每个逻辑改动都有对应 commit；
 - 本次改动的所有文件均已提交，工作区干净；
 - 最终交付说明包含 commit 哈希和验证结果。
+
+## 5. 当前后端命令
+
+Conda 环境名：`english_practice`，Python 3.11。
+
+- 创建环境：`conda create -n english_practice -c conda-forge --override-channels python=3.11`
+- 安装依赖：按 `backend/pyproject.toml` 清单使用 `conda run -n english_practice python -m pip install` 安装。
+- 测试：`cd backend` 后执行 `conda run -n english_practice python -m pytest -q`
+- Lint：`cd backend` 后执行 `conda run -n english_practice python -m ruff check .`
+- 格式检查：`cd backend` 后执行 `conda run -n english_practice python -m ruff format --check .`
+- 启动：`cd backend` 后执行 `conda run -n english_practice python -m uvicorn app.main:app --reload --port 8000`
