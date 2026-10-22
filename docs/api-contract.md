@@ -42,11 +42,11 @@
 
 ## 练习（核心）
 ### POST /practice/sessions
-请求：{ wordbook_id?: int, mode: "normal"|"wrong_only", count?: int }
-响应 data：{ session_id, total, questions: [ { word_id, phonetic_uk, phonetic_us, meaning_cn, part_of_speech, hint_letters: int } ] }
+请求：{ wordbook_id?: int, mode: "normal"|"wrong_only", count?: int, strict_mode?: bool }
+响应 data：{ session_id, total, questions: [ { word_id, phonetic_uk, phonetic_us, meaning_cn, part_of_speech, hint: { length: int } } ], notice?: str }
 规则：
 - normal 需 wordbook_id；wrong_only 忽略 wordbook_id
-- 出题不返回 spelling / example
+- 出题不返回 spelling / example；hint 仅返回 length，首字母提示为后续功能
 - 词数不足按实际返回并附 notice
 错误：400 空词书或错词本为空；404 词书不存在
 

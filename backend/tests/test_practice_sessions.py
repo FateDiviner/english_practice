@@ -146,13 +146,14 @@ async def test_normal_session_returns_questions_without_spelling(client: AsyncCl
             "part_of_speech",
             "hint",
         }
+        assert set(question["hint"]) == {"length"}
         assert question["hint"]["length"] > 0
-        assert question["hint"]["first_letter"]
     async with async_session_factory() as session:
         stored_session = await session.get(PracticeSession, body["session_id"])
         assert stored_session is not None
         assert stored_session.status == "ongoing"
         assert stored_session.total_count == 3
+        assert stored_session.strict_mode is False
 
 
 async def test_normal_session_rejects_non_published_wordbook(client: AsyncClient) -> None:

@@ -105,8 +105,7 @@ async def create_session(
     count: int,
     strict_mode: bool,
 ) -> tuple[PracticeSession, list[Word], str | None]:
-    """创建练习会话并选出题目；strict_mode 本期只接收，不落库。"""
-    _ = strict_mode
+    """创建练习会话并选出题目，同时持久化 strict_mode。"""
 
     if mode == "normal":
         if wordbook_id is None:
@@ -134,6 +133,7 @@ async def create_session(
         user_id=user_id,
         wordbook_id=wordbook_id,
         mode=mode,
+        strict_mode=strict_mode,
         total_count=len(selected_words),
         status="ongoing",
     )

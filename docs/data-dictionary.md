@@ -82,6 +82,7 @@
 | user_id | BIGINT | 否 | - | FK users.id |
 | wordbook_id | BIGINT | 是 | NULL | 错词重练时为空 |
 | mode | ENUM('normal','wrong_only') | 否 | 'normal' | |
+| strict_mode | BOOLEAN | 否 | true | 严格模式；宽松模式忽略连字符与空格 |
 | total_count | INT | 否 | 0 | |
 | correct_count | INT | 否 | 0 | |
 | status | ENUM('ongoing','finished') | 否 | 'ongoing' | |

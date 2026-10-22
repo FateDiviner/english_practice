@@ -39,10 +39,7 @@ async def create_session_endpoint(
             phonetic_us=word.phonetic_us,
             meaning_cn=word.meaning_cn,
             part_of_speech=word.part_of_speech,
-            hint=QuestionHintOut(
-                first_letter=word.spelling[0] if word.spelling else "",
-                length=len(word.spelling),
-            ),
+            hint=QuestionHintOut(length=len(word.spelling)),
         )
         for word in words
     ]

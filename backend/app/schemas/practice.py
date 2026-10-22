@@ -11,7 +11,6 @@ class SessionCreateIn(BaseModel):
 
 
 class QuestionHintOut(BaseModel):
-    first_letter: str
     length: int
 
 

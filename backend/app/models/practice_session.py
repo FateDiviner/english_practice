@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Enum, ForeignKey, Index, Integer, func, text
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, Index, Integer, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -39,6 +39,7 @@ class PracticeSession(Base):
         nullable=False,
         server_default="normal",
     )
+    strict_mode: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("1"))
     total_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     correct_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     status: Mapped[str] = mapped_column(

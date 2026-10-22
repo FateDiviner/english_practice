@@ -75,6 +75,7 @@ def test_practice_session_schema() -> None:
         "user_id",
         "wordbook_id",
         "mode",
+        "strict_mode",
         "total_count",
         "correct_count",
         "status",
@@ -84,6 +85,7 @@ def test_practice_session_schema() -> None:
         "updated_at",
     }
     assert table.c.wordbook_id.nullable is True
+    assert isinstance(table.c.strict_mode.type, Boolean)
     assert table.c.mode.type.enums == ["normal", "wrong_only"]
     assert table.c.status.type.enums == ["ongoing", "finished"]
     assert indexes == {"idx_sessions_user", "idx_sessions_started_at"}
