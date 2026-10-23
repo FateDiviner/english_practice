@@ -61,6 +61,12 @@ export function getAdminUserStats(userId) {
   return request.get(`/admin/users/${userId}/stats`)
 }
 
+export function previewAdminImport(wordbookId, file) {
+  const body = new FormData()
+  body.append('file', file)
+  return request.post(`/admin/wordbooks/${wordbookId}/import/preview`, body)
+}
+
 export function importAdminWords(wordbookId, file, mapping) {
   const body = new FormData()
   body.append('file', file)

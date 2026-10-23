@@ -1,29 +1,31 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
-import { getAdminImportJob, importAdminWords, listAdminWordbooks } from '../../api/admin'
+import {
+  getAdminImportJob,
+  importAdminWords,
+  listAdminWordbooks,
+  previewAdminImport,
+} from '../../api/admin'
 import ImportPreview from '../../components/admin/ImportPreview.vue'
 import ImportResultPanel from '../../components/admin/ImportResultPanel.vue'
 import ImportStepper from '../../components/admin/ImportStepper.vue'
 import { getErrorMessage } from '../../utils/errors'
-import {
-  IMPORT_FIELDS,
-  parseDelimited,
-  suggestMapping,
-  validateImportRows,
-} from '../../utils/delimited'
+import { IMPORT_FIELDS, suggestMapping, validateImportRows } from '../../utils/delimited'
 
 const STEPS = ['上传文件', '列映射', '预览校验', '确认导入', '导入结果']
 const POLL_INTERVAL_MS = 1200
-const TEXT_FILE_PATTERN = /\.(csv|tsv|txt)$/i
 const currentStep = ref(1)
 const wordbooks = ref([])
 const selectedWordbookId = ref('')
 const selectedFile = ref(null)
 const headers = ref([])
 const rows = ref([])
+const totalRows = ref(0)
+const hasPreview = ref(false)
 const mapping = reactive({})
 const isReadingFile = ref(false)
+const fileInputRef = ref(null)
 const fileError = ref('')
 const errorMessage = ref('')
 const isImporting = ref(false)
@@ -34,10 +36,12 @@ let pollTimer = null
 const validationErrors = computed(() => validateImportRows(headers.value, rows.value, mapping))
 const canContinue = computed(() => {
   if (currentStep.value === 1) {
-    return Boolean(selectedWordbookId.value && selectedFile.value && headers.value.length)
+    return Boolean(selectedWordbookId.value && selectedFile.value && hasPreview.value)
   }
   if (currentStep.value === 2) return mapping.spelling !== undefined && mapping.spelling !== ''
-  if (currentStep.value === 3) return validationErrors.value.length === 0 && rows.value.length > 0
+  if (currentStep.value === 3) {
+    return validationErrors.value.length === 0 && rows.value.length > 0
+  }
   return true
 })
 const selectedWordbook = computed(() =>
@@ -58,33 +62,36 @@ function clearPolling() {
   pollTimer = null
 }
 
-async function handleFile(event) {
-  const file = event.target.files?.[0] || null
-  selectedFile.value = file
+async function loadPreviewFromServer() {
+  if (!selectedFile.value || !selectedWordbookId.value) return
+  isReadingFile.value = true
+  fileError.value = ''
+  hasPreview.value = false
   headers.value = []
   rows.value = []
-  fileError.value = ''
+  totalRows.value = 0
   for (const key of Object.keys(mapping)) delete mapping[key]
-  if (!file) return
-  if (!TEXT_FILE_PATTERN.test(file.name)) {
-    fileError.value = '浏览器预览目前支持 CSV / TSV；Excel 文件请先另存为 CSV 再导入。'
-    return
-  }
-  isReadingFile.value = true
   try {
-    const parsed = parseDelimited(await file.text())
-    if (parsed.length < 2) {
-      fileError.value = '文件至少需要一行表头和一行数据。'
-      return
-    }
-    headers.value = parsed[0]
-    rows.value = parsed.slice(1)
+    const preview = await previewAdminImport(Number(selectedWordbookId.value), selectedFile.value)
+    headers.value = preview.headers || []
+    rows.value = preview.rows || []
+    totalRows.value = preview.total_rows || 0
+    hasPreview.value = true
     Object.assign(mapping, suggestMapping(headers.value))
-  } catch {
-    fileError.value = '文件读取失败，请确认编码与格式后重试。'
+  } catch (error) {
+    fileError.value = getErrorMessage(error, '文件解析失败，请检查格式后重试。')
   } finally {
     isReadingFile.value = false
   }
+}
+
+async function handleFile(event) {
+  selectedFile.value = event.target.files?.[0] || null
+  await loadPreviewFromServer()
+}
+
+async function handleWordbookChange() {
+  if (selectedFile.value) await loadPreviewFromServer()
 }
 
 function goNext() {
@@ -142,10 +149,13 @@ function restart() {
   selectedFile.value = null
   headers.value = []
   rows.value = []
+  totalRows.value = 0
+  hasPreview.value = false
   importJob.value = null
   jobError.value = ''
   errorMessage.value = ''
   for (const key of Object.keys(mapping)) delete mapping[key]
+  if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
 onMounted(loadWordbooks)
@@ -172,11 +182,11 @@ onBeforeUnmount(clearPolling)
         <div class="step-heading">
           <span>STEP 01</span>
           <h2>选择目标词书与文件</h2>
-          <p>支持 CSV / TSV 文件。第一行必须是表头，文件内容只在浏览器内做预览。</p>
+          <p>支持 CSV / TSV / XLSX 文件。第一行必须是表头，文件由服务端解析预览。</p>
         </div>
         <label class="field">
           <span class="field-label">目标词书</span>
-          <select v-model="selectedWordbookId" class="field-input">
+          <select v-model="selectedWordbookId" class="field-input" @change="handleWordbookChange">
             <option value="" disabled>请选择一本词书</option>
             <option v-for="book in wordbooks" :key="book.id" :value="book.id">
               {{ book.name }}
@@ -185,10 +195,15 @@ onBeforeUnmount(clearPolling)
         </label>
         <label class="file-drop">
           <span class="file-drop__title">{{ selectedFile ? selectedFile.name : '选择文件' }}</span>
-          <span class="file-drop__hint">CSV / TSV / TXT · 首行为表头</span>
-          <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" @change="handleFile" />
+          <span class="file-drop__hint">CSV / TSV / TXT / XLSX · 首行为表头</span>
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".csv,.tsv,.txt,.xlsx"
+            @change="handleFile"
+          />
         </label>
-        <p v-if="isReadingFile" class="field-help">正在读取文件…</p>
+        <p v-if="isReadingFile" class="field-help">正在解析文件…</p>
         <p v-if="fileError" class="inline-notice inline-notice--error" role="alert">
           {{ fileError }}
         </p>
@@ -243,7 +258,7 @@ onBeforeUnmount(clearPolling)
           </div>
           <div>
             <dt>数据行</dt>
-            <dd>{{ rows.length }} 行</dd>
+            <dd>{{ totalRows }} 行</dd>
           </div>
           <div>
             <dt>映射字段</dt>
@@ -263,7 +278,7 @@ onBeforeUnmount(clearPolling)
         v-else
         :job="importJob"
         :error="jobError"
-        :fallback-total="rows.length"
+        :fallback-total="totalRows"
         @restart="restart"
       />
     </section>
