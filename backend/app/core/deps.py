@@ -38,7 +38,7 @@ async def get_current_user(
         raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "未登录或登录已过期")
 
     if user.status != "active":
-        raise AppError(403, ERROR_CODE_FORBIDDEN, "账号已被禁用")
+        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "账号已被禁用")
 
     return user
 
