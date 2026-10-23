@@ -1,4 +1,5 @@
 import random
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -136,6 +137,7 @@ async def create_session(
         wordbook_id=wordbook_id,
         mode=mode,
         strict_mode=strict_mode,
+        started_at=datetime.now(UTC).replace(tzinfo=None),
         total_count=len(selected_words),
         status="ongoing",
     )

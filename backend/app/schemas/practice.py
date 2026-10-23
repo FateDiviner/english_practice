@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -42,3 +43,30 @@ class AnswerOut(BaseModel):
     correct_spelling: str | None = None
     example_en: str | None = None
     example_cn: str | None = None
+
+
+class SessionFinishOut(BaseModel):
+    session_id: int
+    total: int
+    correct: int
+    accuracy: float
+    duration_seconds: int
+
+
+class SessionRecordOut(BaseModel):
+    word_id: int
+    is_correct: bool
+    user_input: str
+
+
+class SessionDetailOut(BaseModel):
+    session_id: int
+    mode: Literal["normal", "wrong_only"]
+    total: int
+    correct: int
+    accuracy: float
+    duration_seconds: int
+    status: Literal["ongoing", "finished"]
+    started_at: datetime
+    finished_at: datetime | None
+    records: list[SessionRecordOut]

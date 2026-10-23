@@ -7,6 +7,7 @@ from app.models.practice_record import PracticeRecord
 from app.models.practice_session import PracticeSession
 from app.models.session_question import SessionQuestion
 from app.models.user import User
+from app.models.user_wordbook import UserWordbook
 from app.models.word import Word
 from app.models.word_progress import WordProgress
 from app.models.wordbook import Wordbook
@@ -30,6 +31,7 @@ async def clean_answer_data() -> None:
         session_ids = select(PracticeSession.id).where(PracticeSession.user_id.in_(user_ids))
         await session.execute(delete(WrongWord).where(WrongWord.user_id.in_(user_ids)))
         await session.execute(delete(WordProgress).where(WordProgress.user_id.in_(user_ids)))
+        await session.execute(delete(UserWordbook).where(UserWordbook.user_id.in_(user_ids)))
         await session.execute(
             delete(PracticeRecord).where(PracticeRecord.session_id.in_(session_ids))
         )

@@ -14,8 +14,12 @@ from app.schemas.practice import (
     QuestionOut,
     SessionCreateIn,
     SessionCreateOut,
+    SessionDetailOut,
+    SessionFinishOut,
+    SessionRecordOut,
 )
 from app.services.practice import answer_question, create_session
+from app.services.practice_finish import finish_session, get_session_detail
 
 router = APIRouter(
     prefix="/practice",
@@ -91,5 +95,62 @@ async def answer_question_endpoint(
             correct_spelling=result.correct_spelling,
             example_en=result.example_en,
             example_cn=result.example_cn,
+        ),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/finish",
+    response_model=ApiResponse[SessionFinishOut],
+)
+async def finish_session_endpoint(
+    session_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ApiResponse[SessionFinishOut]:
+    """结束练习会话，重复调用返回相同汇总。"""
+    result = await finish_session(session, current_user.id, session_id)
+    return ApiResponse[SessionFinishOut](
+        code=0,
+        message="ok",
+        data=SessionFinishOut(
+            session_id=result.session_id,
+            total=result.total,
+            correct=result.correct,
+            accuracy=result.accuracy,
+            duration_seconds=result.duration_seconds,
+        ),
+    )
+
+
+@router.get("/sessions/{session_id}", response_model=ApiResponse[SessionDetailOut])
+async def get_session_detail_endpoint(
+    session_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ApiResponse[SessionDetailOut]:
+    """返回当前用户的练习汇总和每题记录。"""
+    result = await get_session_detail(session, current_user.id, session_id)
+    return ApiResponse[SessionDetailOut](
+        code=0,
+        message="ok",
+        data=SessionDetailOut(
+            session_id=result.session_id,
+            mode=result.mode,
+            total=result.total,
+            correct=result.correct,
+            accuracy=result.accuracy,
+            duration_seconds=result.duration_seconds,
+            status=result.status,
+            started_at=result.started_at,
+            finished_at=result.finished_at,
+            records=[
+                SessionRecordOut(
+                    word_id=record.word_id,
+                    is_correct=record.is_correct,
+                    user_input=record.user_input,
+                )
+                for record in result.records
+            ],
         ),
     )
