@@ -5,6 +5,7 @@ from app.api.v1.admin_words import router as admin_words_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.health import router as health_router
 from app.api.v1.practice import router as practice_router
+from app.api.v1.stats import router as stats_router
 from app.api.v1.wordbooks import router as wordbooks_router
 from app.api.v1.wrong_words import router as wrong_words_router
 
@@ -16,3 +17,4 @@ api_router.include_router(admin_words_router)
 api_router.include_router(wordbooks_router)
 api_router.include_router(practice_router)
 api_router.include_router(wrong_words_router)
+api_router.include_router(stats_router)
