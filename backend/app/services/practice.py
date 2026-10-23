@@ -15,6 +15,7 @@ from app.models.word import Word
 from app.models.word_progress import WordProgress
 from app.models.wordbook import Wordbook
 from app.models.wrong_word import WrongWord
+from app.services.practice_answer import answer_question  # noqa: F401
 
 MASTERED_MIX_DIVISOR = 5
 

@@ -7,8 +7,15 @@ from app.core.deps import get_current_user
 from app.db.session import get_session
 from app.models.user import User
 from app.schemas.common import ApiResponse
-from app.schemas.practice import QuestionHintOut, QuestionOut, SessionCreateIn, SessionCreateOut
-from app.services.practice import create_session
+from app.schemas.practice import (
+    AnswerIn,
+    AnswerOut,
+    QuestionHintOut,
+    QuestionOut,
+    SessionCreateIn,
+    SessionCreateOut,
+)
+from app.services.practice import answer_question, create_session
 
 router = APIRouter(
     prefix="/practice",
@@ -51,5 +58,38 @@ async def create_session_endpoint(
             total=len(questions),
             questions=questions,
             notice=notice,
+        ),
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/answer",
+    response_model=ApiResponse[AnswerOut],
+    response_model_exclude_none=True,
+)
+async def answer_question_endpoint(
+    session_id: int,
+    payload: AnswerIn,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ApiResponse[AnswerOut]:
+    """提交单题答案；重复提交返回首次结果，不重复计分。"""
+    result = await answer_question(
+        session=session,
+        user_id=current_user.id,
+        session_id=session_id,
+        word_id=payload.word_id,
+        user_input=payload.user_input,
+        used_hint=payload.used_hint,
+    )
+    return ApiResponse[AnswerOut](
+        code=0,
+        message="ok",
+        data=AnswerOut(
+            is_correct=result.is_correct,
+            mastery_level=result.mastery_level,
+            correct_spelling=result.correct_spelling,
+            example_en=result.example_en,
+            example_cn=result.example_cn,
         ),
     )

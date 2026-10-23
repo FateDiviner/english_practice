@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SessionCreateIn(BaseModel):
@@ -28,3 +28,17 @@ class SessionCreateOut(BaseModel):
     total: int
     questions: list[QuestionOut]
     notice: str | None = None
+
+
+class AnswerIn(BaseModel):
+    word_id: int
+    user_input: str = Field(max_length=100)
+    used_hint: bool = False
+
+
+class AnswerOut(BaseModel):
+    is_correct: bool
+    mastery_level: int
+    correct_spelling: str | None = None
+    example_en: str | None = None
+    example_cn: str | None = None
