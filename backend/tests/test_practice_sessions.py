@@ -146,6 +146,7 @@ async def test_normal_session_returns_questions_without_spelling(client: AsyncCl
             "phonetic_us",
             "meaning_cn",
             "part_of_speech",
+            "audio_url",
             "hint",
         }
         assert set(question["hint"]) == {"length"}

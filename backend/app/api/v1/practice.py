@@ -50,6 +50,7 @@ async def create_session_endpoint(
             phonetic_us=word.phonetic_us,
             meaning_cn=word.meaning_cn,
             part_of_speech=word.part_of_speech,
+            audio_url=word.audio_url,
             hint=QuestionHintOut(length=len(word.spelling)),
         )
         for word in words

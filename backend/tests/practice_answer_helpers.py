@@ -93,6 +93,7 @@ async def create_word(
     admin: dict[str, str],
     wordbook_id: int,
     spelling: str,
+    audio_url: str | None = None,
 ) -> dict:
     response = await client.post(
         f"/api/v1/admin/wordbooks/{wordbook_id}/words",
@@ -102,6 +103,7 @@ async def create_word(
             "meaning_cn": f"释义 {spelling}",
             "example_en": f"Example for {spelling}.",
             "example_cn": f"{spelling} 的例句。",
+            "audio_url": audio_url,
         },
     )
     assert response.status_code == 201

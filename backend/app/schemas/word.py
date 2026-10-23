@@ -91,6 +91,7 @@ class UserWordItem(BaseModel):
     phonetic_us: str | None
     meaning_cn: str | None
     part_of_speech: str | None
+    audio_url: str | None
     mastery_level: int | None = None
 
 

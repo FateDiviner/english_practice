@@ -106,6 +106,7 @@ async def list_wordbook_words_endpoint(
                     phonetic_us=word.phonetic_us,
                     meaning_cn=word.meaning_cn,
                     part_of_speech=word.part_of_speech,
+                    audio_url=word.audio_url,
                     mastery_level=None,
                 )
                 for word in words
