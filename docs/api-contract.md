@@ -103,14 +103,22 @@
 ### PUT /admin/words/{id}
 ### DELETE /admin/words/{id}
 
-### POST /admin/wordbooks/{id}/import
+### POST /admin/wordbooks/{id}/import/preview
 Content-Type: multipart/form-data
 字段：file
+响应 data：{ file_name, sheet_name, headers, rows, total_rows }
+规则：支持 CSV / TSV / TXT / XLSX；返回表头与前 20 行样本
+
+### POST /admin/wordbooks/{id}/import
+Content-Type: multipart/form-data
+字段：file、mapping（JSON 字符串，列名到列下标的映射）
 响应 data：{ import_job_id }
-规则：大文件立即返回 job_id，后台处理
+状态码：202
+规则：立即返回 job_id，后台逐行校验并导入；合法行入库，失败行记录明细
 
 ### GET /admin/import-jobs/{id}
 响应 data：{ id, status, total_rows, success_rows, failed_rows, errors: [ { row, content, reason } ] }
+状态：pending / processing / done / failed
 
 ## 管理员 · 用户
 ### GET /admin/users

@@ -8,9 +8,11 @@ dependencies = [
     "asyncmy",
     "bcrypt>=5.0.0",
     "fastapi",
+    "openpyxl>=3.1.5",
     "pydantic",
     "pydantic-settings",
     "python-jose[cryptography]",
+    "python-multipart>=0.0.32",
     "sqlalchemy[asyncio]",
     "uvicorn",
 ]
