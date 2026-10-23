@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str | None = None
     AI_PROVIDER_URL: str = ""
     AI_API_KEY: str = ""
+    AI_PROVIDER: str = "mock"
+    AI_MODEL: str = "qwen2.5:7b"
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",

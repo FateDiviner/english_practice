@@ -146,3 +146,13 @@ Content-Type: multipart/form-data
 ### GET /ai/sessions
 ### POST /ai/sessions
 响应：{ code: 501, message: "not implemented", data: null }
+
+## 智能伴学 Agent（Router + Skill）
+### POST /agent/chat
+请求：{ message: str, scene: str | null, history: [ { role: "user" | "assistant", content: str } ] }
+响应：SSE 流（text/event-stream），事件序列：
+- event: meta  data: { intent: "EXPLAIN_WORD" | "GRAMMAR" | "ORAL_PRACTICE", skill: str, scene: str | null }
+- event: delta  data: { content: str }（增量文本，前端打字机拼接）
+- event: done  data: { finish_reason: "stop" }
+说明：scene 取值 restaurant / interview / hotel / airport，仅 ORAL_PRACTICE 意图使用；
+未配置 AI_PROVIDER/AI_API_KEY 时返回 Mock 假数据流。

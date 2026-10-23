@@ -8,6 +8,7 @@ dependencies = [
     "asyncmy",
     "bcrypt>=5.0.0",
     "fastapi",
+    "httpx>=0.28.1",
     "openpyxl>=3.1.5",
     "pydantic",
     "pydantic-settings",
@@ -19,7 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx",
+
     "pytest",
     "pytest-asyncio",
     "ruff",
