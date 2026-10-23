@@ -145,6 +145,17 @@ async def answer_question(
         progress.last_result = "correct"
         if progress.consecutive_correct >= CONSECUTIVE_CORRECT_TO_MASTER:
             progress.mastery_level = 2
+            wrong_word = await session.scalar(
+                select(WrongWord)
+                .where(
+                    WrongWord.user_id == user_id,
+                    WrongWord.word_id == word_id,
+                )
+                .with_for_update(),
+            )
+            if wrong_word is not None and not wrong_word.resolved:
+                wrong_word.resolved = True
+                wrong_word.resolved_at = now
         practice_session.correct_count += 1
     else:
         progress.wrong_count += 1

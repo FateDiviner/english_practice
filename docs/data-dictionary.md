@@ -113,7 +113,7 @@
 | word_id | BIGINT | 否 | - | FK words.id |
 | wrong_count | INT | 否 | 0 | 累加 |
 | last_wrong_at | DATETIME | 是 | NULL | |
-| resolved | BOOLEAN | 否 | false | 重练达标置 true |
+| resolved | BOOLEAN | 否 | false | 普通练习或错词重练连续正确 2 次置 true；再次答错置 false |
 | resolved_at | DATETIME | 是 | NULL | |
 
 索引：UNIQUE(user_id, word_id)、idx_wrong_words_user_resolved

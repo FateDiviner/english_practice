@@ -192,3 +192,72 @@ async def test_word_not_in_session_returns_40001(client: AsyncClient) -> None:
     )
     assert response.status_code == 400
     assert response.json()["code"] == 40001
+
+
+async def test_normal_practice_resolves_wrong_word_after_two_correct_answers(
+    client: AsyncClient,
+) -> None:
+    context = await build_context(client, "resolve", ["alpha"])
+    word_id = context["session"]["questions"][0]["word_id"]
+    await answer(client, context["user"], context["session"]["session_id"], word_id, "wrong")
+
+    second_session = await create_practice_session(client, context["user"], context["wordbook_id"])
+    await answer(client, context["user"], second_session["session_id"], word_id, "alpha")
+    third_session = await create_practice_session(client, context["user"], context["wordbook_id"])
+    await answer(client, context["user"], third_session["session_id"], word_id, "alpha")
+
+    async with async_session_factory() as session:
+        wrong_word = await session.scalar(
+            select(WrongWord).where(
+                WrongWord.user_id == context["user_id"],
+                WrongWord.word_id == word_id,
+            ),
+        )
+        assert wrong_word is not None
+        assert wrong_word.resolved is True
+        assert wrong_word.resolved_at is not None
+
+
+async def test_wrong_word_stays_unresolved_after_one_correct_answer(client: AsyncClient) -> None:
+    context = await build_context(client, "one_correct", ["alpha"])
+    word_id = context["session"]["questions"][0]["word_id"]
+    await answer(client, context["user"], context["session"]["session_id"], word_id, "wrong")
+    second_session = await create_practice_session(client, context["user"], context["wordbook_id"])
+    await answer(client, context["user"], second_session["session_id"], word_id, "alpha")
+
+    async with async_session_factory() as session:
+        wrong_word = await session.scalar(
+            select(WrongWord).where(
+                WrongWord.user_id == context["user_id"],
+                WrongWord.word_id == word_id,
+            ),
+        )
+        assert wrong_word is not None
+        assert wrong_word.resolved is False
+        assert wrong_word.resolved_at is None
+
+
+async def test_wrong_answer_reopens_resolved_wrong_word(client: AsyncClient) -> None:
+    context = await build_context(client, "reopen", ["alpha"])
+    word_id = context["session"]["questions"][0]["word_id"]
+    await answer(client, context["user"], context["session"]["session_id"], word_id, "wrong")
+    for _ in range(2):
+        correct_session = await create_practice_session(
+            client, context["user"], context["wordbook_id"]
+        )
+        await answer(client, context["user"], correct_session["session_id"], word_id, "alpha")
+
+    wrong_session = await create_practice_session(client, context["user"], context["wordbook_id"])
+    await answer(client, context["user"], wrong_session["session_id"], word_id, "wrong")
+
+    async with async_session_factory() as session:
+        wrong_word = await session.scalar(
+            select(WrongWord).where(
+                WrongWord.user_id == context["user_id"],
+                WrongWord.word_id == word_id,
+            ),
+        )
+        assert wrong_word is not None
+        assert wrong_word.resolved is False
+        assert wrong_word.resolved_at is None
+        assert wrong_word.wrong_count == 2
