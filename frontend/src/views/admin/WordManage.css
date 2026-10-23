@@ -1,0 +1,45 @@
+.back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--color-disabled);
+  font-size: var(--font-size-xs);
+}
+
+.search-bar {
+  display: flex;
+  gap: 10px;
+  max-width: 520px;
+  margin: 22px 0 0;
+}
+
+.admin-notice {
+  margin-top: 18px;
+}
+
+.spelling-cell {
+  color: var(--color-primary);
+  font-family: var(--font-family-title);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.phonetic-cell {
+  color: var(--color-disabled);
+  font-family: var(--font-family-title);
+}
+
+.danger-link {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+}
+
+.form-textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+@media (max-width: 620px) {
+  .search-bar {
+    flex-direction: column;
+  }
+}

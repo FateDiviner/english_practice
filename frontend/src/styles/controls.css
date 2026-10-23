@@ -1,0 +1,156 @@
+.primary-button,
+.secondary-button,
+.ghost-button,
+.danger-button {
+  min-height: 42px;
+  padding: 9px 20px;
+  border-radius: var(--radius-small);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.primary-button {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary), var(--color-text) 14%);
+}
+
+.secondary-button {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.secondary-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  background: var(--color-background-muted);
+}
+
+.ghost-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.danger-button {
+  border: 1px solid color-mix(in srgb, var(--color-error), transparent 55%);
+  background: transparent;
+  color: var(--color-error);
+}
+
+.danger-button:hover:not(:disabled) {
+  border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error), transparent 92%);
+}
+
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled),
+.ghost-button:active:not(:disabled),
+.danger-button:active:not(:disabled) {
+  transform: translateY(var(--offset-active));
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  padding: 0;
+}
+
+.text-link:hover {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field-label {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.field-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  transition: border-color 160ms ease;
+}
+
+.field-input:hover {
+  border-color: var(--color-border-hover);
+}
+
+.field-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.field-input::placeholder {
+  color: var(--color-disabled);
+}
+
+.field-help {
+  color: var(--color-disabled);
+  font-size: var(--font-size-xs);
+}
+
+.field-error {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.form-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.inline-notice {
+  padding: 11px 14px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-background-muted);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.inline-notice--error {
+  border-left-color: var(--color-error);
+}
+
+.inline-notice--success {
+  border-left-color: var(--color-success);
+}

@@ -1,0 +1,38 @@
+.admin-notice {
+  margin-top: 20px;
+}
+
+.admin-notice__retry {
+  margin-left: 10px;
+  font-size: var(--font-size-xs);
+}
+
+.wordbook-cell strong,
+.wordbook-cell small {
+  display: block;
+}
+
+.wordbook-cell strong {
+  font-family: var(--font-family-title);
+  font-size: var(--font-size-md);
+}
+
+.wordbook-cell small {
+  max-width: 360px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--color-disabled);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.danger-link {
+  color: var(--color-error);
+  font-size: var(--font-size-xs);
+}
+
+.form-textarea {
+  min-height: 96px;
+  resize: vertical;
+}

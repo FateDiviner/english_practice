@@ -12,7 +12,10 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
+        Audio: 'readonly',
         document: 'readonly',
+        FormData: 'readonly',
+        SpeechSynthesisUtterance: 'readonly',
         window: 'readonly',
       },
     },
