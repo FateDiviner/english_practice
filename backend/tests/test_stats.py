@@ -177,3 +177,31 @@ async def test_other_user_records_are_not_included(client: AsyncClient) -> None:
     overview = await get_overview(client, first["user"])
     assert overview["total_practiced"] == 1
     assert overview["accuracy"] == 1.0
+
+
+async def test_utc_late_night_groups_into_next_shanghai_day(client: AsyncClient) -> None:
+    context = await build_context(client, "utc_boundary", ["alpha"])
+    async with async_session_factory() as session:
+        session.add(
+            PracticeRecord(
+                session_id=context["session"]["session_id"],
+                word_id=context["words"][0]["id"],
+                user_input="alpha",
+                is_correct=True,
+                answered_at=datetime(2026, 10, 22, 23, 30),
+            ),
+        )
+        await session.commit()
+
+    daily = await client.get(
+        "/api/v1/stats/daily",
+        params={"from": "2026-10-22", "to": "2026-10-23"},
+        headers=context["user"],
+    )
+    overview = await get_overview(client, context["user"])
+
+    assert daily.status_code == 200
+    assert daily.json()["data"]["items"] == [
+        {"date": "2026-10-23", "answered": 1, "correct": 1},
+    ]
+    assert overview["streak_days"] == 1
