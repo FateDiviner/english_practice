@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str | None = None
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
+    AI_PROVIDER_URL: str = ""
+    AI_API_KEY: str = ""
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",

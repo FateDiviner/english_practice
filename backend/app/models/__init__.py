@@ -1,3 +1,5 @@
+from app.models.ai_conversation import AiConversation
+from app.models.ai_message import AiMessage
 from app.models.practice_record import PracticeRecord
 from app.models.practice_session import PracticeSession
 from app.models.session_question import SessionQuestion
@@ -9,6 +11,8 @@ from app.models.wordbook import Wordbook
 from app.models.wrong_word import WrongWord
 
 __all__ = [
+    "AiConversation",
+    "AiMessage",
     "PracticeRecord",
     "PracticeSession",
     "SessionQuestion",
