@@ -10,6 +10,7 @@ from app.core.exception_handlers import (
     AppError,
 )
 from app.models.practice_session import PracticeSession
+from app.models.session_question import SessionQuestion
 from app.models.word import Word
 from app.models.word_progress import WordProgress
 from app.models.wordbook import Wordbook
@@ -138,6 +139,17 @@ async def create_session(
         status="ongoing",
     )
     session.add(practice_session)
+    await session.flush()
+    session.add_all(
+        [
+            SessionQuestion(
+                session_id=practice_session.id,
+                word_id=word.id,
+                sort_order=sort_order,
+            )
+            for sort_order, word in enumerate(selected_words)
+        ],
+    )
     await session.commit()
     await session.refresh(practice_session)
     return practice_session, selected_words, notice

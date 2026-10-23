@@ -118,6 +118,18 @@
 
 索引：UNIQUE(user_id, word_id)、idx_wrong_words_user_resolved
 
+## session_questions
+
+| 字段 | 类型 | 可空 | 默认 | 说明 |
+|---|---|---|---|---|
+| id | BIGINT | 否 | 自增 | |
+| session_id | BIGINT | 否 | - | FK practice_sessions.id，ON DELETE CASCADE |
+| word_id | BIGINT | 否 | - | FK words.id，ON DELETE RESTRICT |
+| sort_order | INT | 否 | 0 | 本次会话中的出题顺序 |
+| created_at | DATETIME | 否 | now | |
+
+索引：UNIQUE(session_id, word_id)、idx_session_questions_session_sort
+
 ## import_jobs
 | 字段 | 类型 | 可空 | 默认 | 说明 |
 |---|---|---|---|---|

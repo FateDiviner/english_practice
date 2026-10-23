@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from app.db.session import async_session_factory
 from app.models.practice_session import PracticeSession
+from app.models.session_question import SessionQuestion
 from app.models.user import User
 from app.models.word import Word
 from app.models.word_progress import WordProgress
@@ -12,6 +13,7 @@ from app.models.wrong_word import WrongWord
 from httpx import AsyncClient
 from scripts.create_admin import seed_admin
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 ADMIN_PASSWORD = "AdminPass123!"
 USER_PASSWORD = "UserPass123!"
@@ -154,6 +156,28 @@ async def test_normal_session_returns_questions_without_spelling(client: AsyncCl
         assert stored_session.status == "ongoing"
         assert stored_session.total_count == 3
         assert stored_session.strict_mode is False
+        question_rows = list(
+            (
+                await session.scalars(
+                    select(SessionQuestion)
+                    .where(SessionQuestion.session_id == body["session_id"])
+                    .order_by(SessionQuestion.sort_order),
+                )
+            ).all(),
+        )
+        assert len(question_rows) == body["total"]
+        assert [row.sort_order for row in question_rows] == list(range(body["total"]))
+        assert [row.word_id for row in question_rows] == [q["word_id"] for q in body["questions"]]
+        session.add(
+            SessionQuestion(
+                session_id=body["session_id"],
+                word_id=question_rows[0].word_id,
+                sort_order=99,
+            ),
+        )
+        with pytest.raises(IntegrityError):
+            await session.commit()
+        await session.rollback()
 
 
 async def test_normal_session_rejects_non_published_wordbook(client: AsyncClient) -> None:

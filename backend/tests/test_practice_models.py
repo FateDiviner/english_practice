@@ -1,5 +1,6 @@
 from app.models.practice_record import PracticeRecord
 from app.models.practice_session import PracticeSession
+from app.models.session_question import SessionQuestion
 from app.models.user_wordbook import UserWordbook
 from app.models.word_progress import WordProgress
 from app.models.wrong_word import WrongWord
@@ -149,4 +150,27 @@ def test_wrong_word_schema() -> None:
     assert "uq_wrong_words_user_id_word_id" in unique_names
     assert "idx_wrong_words_user_resolved" in indexes
     assert next(iter(table.c.user_id.foreign_keys)).ondelete == "CASCADE"
+    assert next(iter(table.c.word_id.foreign_keys)).ondelete == "RESTRICT"
+
+
+def test_session_question_schema() -> None:
+    table = SessionQuestion.__table__
+    unique_names = {
+        constraint.name
+        for constraint in table.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+    indexes = {index.name for index in table.indexes}
+
+    assert table.name == "session_questions"
+    assert set(table.columns.keys()) == {
+        "id",
+        "session_id",
+        "word_id",
+        "sort_order",
+        "created_at",
+    }
+    assert "uq_session_questions_session_id_word_id" in unique_names
+    assert "idx_session_questions_session_sort" in indexes
+    assert next(iter(table.c.session_id.foreign_keys)).ondelete == "CASCADE"
     assert next(iter(table.c.word_id.foreign_keys)).ondelete == "RESTRICT"
