@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 120
     APP_TIMEZONE: str = "Asia/Shanghai"
+    FRONTEND_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+    )
     ADMIN_USERNAME: str | None = None
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
