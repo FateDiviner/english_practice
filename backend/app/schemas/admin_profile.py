@@ -27,6 +27,7 @@ class VocabularyBucketOut(BaseModel):
 
 class DataExpertOut(BaseModel):
     source: AgentSource
+    confidence: float = Field(ge=0, le=1)
     summary: str
     tags: list[str]
     accuracy_trend: list[AccuracyTrendPointOut]
@@ -50,6 +51,7 @@ class WeekdayPatternOut(BaseModel):
 
 class HabitExpertOut(BaseModel):
     source: AgentSource
+    confidence: float = Field(ge=0, le=1)
     summary: str
     tags: list[str]
     weekly_frequency: list[WeeklyFrequencyOut]
@@ -82,6 +84,7 @@ class FocusWordOut(BaseModel):
 
 class DiagnosisExpertOut(BaseModel):
     source: AgentSource
+    confidence: float = Field(ge=0, le=1)
     summary: str
     tags: list[str]
     error_patterns: list[ErrorPatternOut]
@@ -100,6 +103,7 @@ class ReviewPlanItemOut(BaseModel):
 
 class PlannerExpertOut(BaseModel):
     source: AgentSource
+    confidence: float = Field(ge=0, le=1)
     summary: str
     tags: list[str]
     review_plan: list[ReviewPlanItemOut]
@@ -123,6 +127,7 @@ class ProfileCoverageOut(BaseModel):
 
 class ProfileSummaryOut(BaseModel):
     headline: str
+    confidence: float = Field(ge=0, le=1)
     level: Literal["excellent", "good", "developing", "needs_attention", "insufficient_data"]
     tags: list[str]
     radar_metrics: list[RadarMetricOut]

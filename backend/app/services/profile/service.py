@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
 
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -24,6 +23,7 @@ from app.services.agent.client import get_llm_client
 from app.services.profile.agents import BaseProfileExpert, build_default_agents
 from app.services.profile.blackboard import Blackboard, collect_blackboard
 from app.services.profile.cache import TTLProfileCache
+from app.services.profile.controller import BlackboardController
 
 AGENT_SEQUENCE = ["data", "habit", "diagnosis", "planner"]
 LEVEL_LABELS = {
@@ -119,6 +119,7 @@ def assemble_profile_report(blackboard: Blackboard) -> UserProfileOut:
         coverage=coverage,
         summary=ProfileSummaryOut(
             headline=headline,
+            confidence=blackboard.solution_confidence,
             level=level,
             tags=tags,
             radar_metrics=radar_metrics,
@@ -136,27 +137,33 @@ def assemble_profile_report(blackboard: Blackboard) -> UserProfileOut:
 
 
 class ProfileOrchestrator:
-    """Runs the fixed Blackboard expert sequence and caches the assembled report."""
+    """Controller-driven Blackboard analysis with a cached final report."""
 
     def __init__(
         self,
         agents: list[BaseProfileExpert],
         cache: TTLProfileCache[UserProfileOut],
+        controller: BlackboardController | None = None,
     ) -> None:
         self._agents = agents
         self._cache = cache
+        self._controller = controller or BlackboardController()
 
     async def analyze(self, session: AsyncSession, user_id: int) -> UserProfileOut:
         blackboard = await collect_blackboard(session, user_id)
         cache_key = f"{user_id}:{blackboard.fingerprint()}"
 
         async def run_experts() -> UserProfileOut:
-            for agent in self._agents:
-                output: BaseModel = await agent.analyze(blackboard)
-                blackboard.write_artifact(agent.key, output)
+            result = await self._controller.solve(blackboard, self._agents)
+            if result.missing_sources:
+                raise RuntimeError(
+                    f"profile knowledge sources not completed: {result.missing_sources}"
+                )
             if blackboard.trace != AGENT_SEQUENCE:
                 raise RuntimeError("profile expert sequence violated")
-            return assemble_profile_report(blackboard)
+            report = assemble_profile_report(blackboard)
+            blackboard.set_solution(report, result.confidence)
+            return report
 
         report, hit, expires_at = await self._cache.get_or_create(cache_key, run_experts)
         return report.model_copy(

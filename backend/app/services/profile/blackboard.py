@@ -3,7 +3,7 @@
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ from app.models.word import Word
 from app.models.word_progress import WordProgress
 from app.models.wrong_word import WrongWord
 
-PROFILE_ANALYSIS_VERSION = "profile-blackboard-v1"
+PROFILE_ANALYSIS_VERSION = "profile-blackboard-v2"
 
 
 @dataclass(frozen=True)
@@ -51,6 +51,28 @@ class PracticeSessionSnapshot:
 
 
 @dataclass
+class BlackboardEntry:
+    """One complete knowledge-source contribution on the shared blackboard."""
+
+    id: str
+    source: str
+    agent_key: str
+    content: BaseModel | dict[str, Any]
+    confidence: float
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    tags: list[str] = field(default_factory=list)
+
+    def content_json(self) -> Any:
+        if isinstance(self.content, BaseModel):
+            return self.content.model_dump(mode="json")
+        return self.content
+
+    def preview(self, limit: int = 120) -> str:
+        content = json.dumps(self.content_json(), ensure_ascii=False, default=str)
+        return content[:limit] + ("..." if len(content) > limit else "")
+
+
+@dataclass
 class Blackboard:
     """Mutable shared context: raw learning facts plus expert artifacts."""
 
@@ -60,17 +82,61 @@ class Blackboard:
     word_progress: list[WordProgressSnapshot]
     wrong_words: list[WrongWordSnapshot]
     practice_sessions: list[PracticeSessionSnapshot]
+    entries: list[BlackboardEntry] = field(default_factory=list)
     artifacts: dict[str, BaseModel] = field(default_factory=dict)
     trace: list[str] = field(default_factory=list)
+    problem_tags: list[str] = field(
+        default_factory=lambda: ["data", "habit", "diagnosis", "planner"]
+    )
+    solution: BaseModel | dict[str, Any] | None = None
+    solution_confidence: float = 0.0
+
+    def write(self, entry: BlackboardEntry) -> None:
+        """Append one knowledge-source contribution with bounded confidence."""
+        entry.confidence = max(0.0, min(1.0, entry.confidence))
+        self.entries.append(entry)
+
+    def read(self, tags: list[str] | None = None) -> list[BlackboardEntry]:
+        """Read all entries, or entries containing any requested tag."""
+        if not tags:
+            return list(self.entries)
+        requested = set(tags)
+        return [entry for entry in self.entries if requested & set(entry.tags)]
 
     def write_artifact(self, agent_key: str, output: BaseModel) -> None:
-        """Publish an expert result so subsequent experts can read it."""
+        """Publish structured expert output for later agents and prompt building."""
         self.artifacts[agent_key] = output
         self.trace.append(agent_key)
 
     def artifact_json(self, agent_key: str) -> dict[str, Any] | None:
         artifact = self.artifacts.get(agent_key)
         return artifact.model_dump(mode="json") if artifact is not None else None
+
+    def get_unique_sources(self) -> set[str]:
+        return {entry.agent_key for entry in self.entries}
+
+    def get_summary(self, limit: int = 120) -> str:
+        if not self.entries:
+            return "黑板当前为空，暂无专家贡献。"
+        return "\n".join(
+            f"[{entry.source}] {entry.preview(limit)} (置信度: {entry.confidence:.2f})"
+            for entry in self.entries
+        )
+
+    def get_full_content(self) -> str:
+        return "\n\n".join(
+            f"【{entry.source}】(置信度: {entry.confidence:.2f})\n"
+            f"{json.dumps(entry.content_json(), ensure_ascii=False, default=str)}"
+            for entry in self.entries
+        )
+
+    def set_solution(
+        self,
+        solution: BaseModel | dict[str, Any],
+        confidence: float,
+    ) -> None:
+        self.solution = solution
+        self.solution_confidence = max(0.0, min(1.0, confidence))
 
     def fingerprint(self) -> str:
         """Hash the facts that affect analysis, so changed data gets a new cache key."""
@@ -110,6 +176,7 @@ class Blackboard:
             "practice_sessions": [
                 item.__dict__ for item in self.practice_sessions[-max_items:]
             ],
+            "blackboard_summary": self.get_summary(limit=200),
             "previous_expert_analysis": previous,
         }
 

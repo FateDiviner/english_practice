@@ -139,8 +139,9 @@ Content-Type: multipart/form-data
 
 ### POST /admin/users/{id}/profile
 管理员触发指定用户的“学情画像分析体”。后端将 word_progress、wrong_words、
-practice_sessions 装入 Blackboard Context，依次运行数据、习惯、诊断、规划四位专家，
-返回可直接渲染标签与雷达图的结构化 JSON。
+practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优先级和依赖关系
+调度数据、习惯、诊断、规划四位知识源；每次贡献以 BlackboardEntry 写入黑板，
+最终由控制器评估整体置信度并组装可渲染标签与雷达图的结构化 JSON。
 
 响应 data：
 ```json
@@ -157,6 +158,7 @@ practice_sessions 装入 Blackboard Context，依次运行数据、习惯、诊�
   },
   "summary": {
     "headline": "learner 的学情画像：良好，正确率稳定",
+    "confidence": 0.74,
     "level": "good",
     "tags": ["正确率稳定", "连续打卡", "re- 前缀薄弱"],
     "radar_metrics": [
@@ -166,16 +168,18 @@ practice_sessions 装入 Blackboard Context，依次运行数据、习惯、诊�
     "risks": ["re- 前缀错词占比偏高"]
   },
   "agents": {
-    "data": { "source": "llm", "summary": "...", "tags": [], "accuracy_trend": [], "vocabulary_distribution": [], "metrics": [], "highlights": [], "risks": [] },
-    "habit": { "source": "llm", "summary": "...", "tags": [], "weekly_frequency": [], "checkin_pattern": [], "average_duration_minutes": 18.5, "total_duration_minutes": 647.5, "active_days": 24, "current_streak_days": 4, "longest_streak_days": 9, "preferred_time_slot": "晚间", "metrics": [], "highlights": [], "risks": [] },
-    "diagnosis": { "source": "llm", "summary": "...", "tags": [], "error_patterns": [], "focus_words": [], "metrics": [], "risks": [] },
-    "planner": { "source": "llm", "summary": "...", "tags": [], "review_plan": [], "weekly_goals": [], "recommendations": [], "metrics": [] }
+    "data": { "source": "llm", "confidence": 0.82, "summary": "...", "tags": [], "accuracy_trend": [], "vocabulary_distribution": [], "metrics": [], "highlights": [], "risks": [] },
+    "habit": { "source": "llm", "confidence": 0.68, "summary": "...", "tags": [], "weekly_frequency": [], "checkin_pattern": [], "average_duration_minutes": 18.5, "total_duration_minutes": 647.5, "active_days": 24, "current_streak_days": 4, "longest_streak_days": 9, "preferred_time_slot": "晚间", "metrics": [], "highlights": [], "risks": [] },
+    "diagnosis": { "source": "llm", "confidence": 0.76, "summary": "...", "tags": [], "error_patterns": [], "focus_words": [], "metrics": [], "risks": [] },
+    "planner": { "source": "llm", "confidence": 0.75, "summary": "...", "tags": [], "review_plan": [], "weekly_goals": [], "recommendations": [], "metrics": [] }
   },
   "agent_sequence": ["data", "habit", "diagnosis", "planner"]
 }
 ```
 说明：
 - `source=heuristic` 表示真实模型不可用或输出不是合法 JSON，已自动回退到可复现的本地统计结果。
+- 每位专家的 `confidence` 与 `summary.confidence` 均为 0~1；规划专家依赖前三份黑板条目。
+- 控制器通过 `BlackboardEntry` 保留来源、标签、时间戳和置信度，可支持后续审计与扩展。
 - `radar_metrics` 中每个 `score` 均为 0~100，可直接映射 ECharts/Chart.js 雷达图。
 - 缓存键包含学习数据指纹；数据未变化时直接返回缓存报告，默认 TTL 由
   `PROFILE_CACHE_TTL_SECONDS` 控制（21600 秒）。数据变化后自动生成新报告。

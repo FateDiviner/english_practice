@@ -13,9 +13,10 @@ from app.models.word import Word
 from app.models.word_progress import WordProgress
 from app.models.wordbook import Wordbook
 from app.models.wrong_word import WrongWord
-from app.services.profile.agents import DataExpert
-from app.services.profile.blackboard import Blackboard
+from app.services.profile.agents import DataExpert, build_default_agents
+from app.services.profile.blackboard import Blackboard, BlackboardEntry
 from app.services.profile.cache import TTLProfileCache
+from app.services.profile.controller import BlackboardController
 from app.services.profile.service import get_profile_orchestrator
 from httpx import AsyncClient
 from scripts.create_admin import seed_admin
@@ -248,6 +249,11 @@ async def test_profile_returns_structured_report_and_uses_cache(client) -> None:
         0 <= item["score"] <= 100
         for item in first_data["summary"]["radar_metrics"]
     )
+    assert 0 <= first_data["summary"]["confidence"] <= 1
+    assert all(
+        0 <= first_data["agents"][key]["confidence"] <= 1
+        for key in ("data", "habit", "diagnosis", "planner")
+    )
 
     second = await client.post(
         f"/api/v1/admin/users/{user_id}/profile",
@@ -306,3 +312,43 @@ async def test_invalid_llm_json_falls_back_to_deterministic_expert() -> None:
     assert result.source == "heuristic"
     assert result.metrics[0].score == 0
     assert "样本不足" in result.tags
+
+def test_blackboard_entries_support_tag_reads_and_solution() -> None:
+    blackboard = _empty_blackboard()
+    entry = BlackboardEntry(
+        id="data_0",
+        source="数据专家",
+        agent_key="data",
+        content={"summary": "正确率稳定"},
+        confidence=1.2,
+        tags=["data", "accuracy"],
+    )
+
+    blackboard.write(entry)
+    blackboard.set_solution({"summary": "done"}, 0.82)
+
+    assert entry.confidence == 1.0
+    assert blackboard.read(["accuracy"]) == [entry]
+    assert blackboard.get_unique_sources() == {"data"}
+    assert blackboard.solution == {"summary": "done"}
+    assert blackboard.solution_confidence == 0.82
+    assert "数据专家" in blackboard.get_summary()
+
+
+async def test_controller_schedules_dependent_knowledge_sources() -> None:
+    blackboard = _empty_blackboard()
+    controller = BlackboardController()
+    result = await controller.solve(blackboard, build_default_agents(None))
+
+    assert blackboard.trace == ["data", "habit", "diagnosis", "planner"]
+    assert [entry.agent_key for entry in blackboard.entries] == [
+        "data",
+        "habit",
+        "diagnosis",
+        "planner",
+    ]
+    assert result.missing_sources == []
+    assert result.iterations == 4
+    assert result.solved is False
+    assert 0 < result.confidence < 0.7
+    assert len(blackboard.read(["wrong_words"])) == 1

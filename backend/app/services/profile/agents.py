@@ -73,8 +73,12 @@ def _extract_json_object(raw: str) -> dict | None:
 
 class BaseProfileExpert(Generic[OutputT]):
     key: str
+    name: str
     role_prompt: str
     output_type: type[OutputT]
+    expertise: tuple[str, ...] = ()
+    depends_on: tuple[str, ...] = ()
+    priority: int = 0
 
     def __init__(self, llm: LLMClient | None = None) -> None:
         self._llm = llm
@@ -126,8 +130,11 @@ class BaseProfileExpert(Generic[OutputT]):
 
 class DataExpert(BaseProfileExpert[DataExpertOut]):
     key = "data"
+    name = "数据专家"
     role_prompt = DATA_SYSTEM_PROMPT
     output_type = DataExpertOut
+    expertise = ("data", "accuracy", "vocabulary")
+    priority = 40
 
     def build_fallback(self, blackboard: Blackboard) -> DataExpertOut:
         sessions = [item for item in blackboard.practice_sessions if item.total_count > 0]
@@ -217,8 +224,18 @@ class DataExpert(BaseProfileExpert[DataExpertOut]):
             f"累计有效答题 {total_answers} 次，整体正确率 {accuracy:.1f}%；"
             f"当前覆盖 {total_words} 个学习词，其中已掌握 {mastered} 个。"
         )
+        confidence = round(
+            min(
+                0.95,
+                0.2
+                + min(total_answers / 100, 1) * 0.45
+                + min(total_words / 100, 1) * 0.2,
+            ),
+            2,
+        )
         return DataExpertOut(
             source="heuristic",
+            confidence=confidence,
             summary=summary,
             tags=tags[:5],
             accuracy_trend=trend,
@@ -246,8 +263,11 @@ class DataExpert(BaseProfileExpert[DataExpertOut]):
 
 class HabitExpert(BaseProfileExpert[HabitExpertOut]):
     key = "habit"
+    name = "习惯专家"
     role_prompt = HABIT_SYSTEM_PROMPT
     output_type = HabitExpertOut
+    expertise = ("habit", "frequency", "duration", "checkin")
+    priority = 30
 
     def build_fallback(self, blackboard: Blackboard) -> HabitExpertOut:
         sessions = blackboard.practice_sessions
@@ -337,8 +357,18 @@ class HabitExpert(BaseProfileExpert[HabitExpertOut]):
             f"总活跃 {len(active_dates)} 天，当前连续 {current_streak} 天，"
             f"偏好时段为{preferred_slot}。"
         )
+        confidence = round(
+            min(
+                0.95,
+                0.2
+                + min(len(sessions) / 20, 1) * 0.55
+                + min(len(active_dates) / 14, 1) * 0.2,
+            ),
+            2,
+        )
         return HabitExpertOut(
             source="heuristic",
+            confidence=confidence,
             summary=summary,
             tags=tags[:5],
             weekly_frequency=weekly_frequency,
@@ -413,8 +443,11 @@ class HabitExpert(BaseProfileExpert[HabitExpertOut]):
 
 class DiagnosisExpert(BaseProfileExpert[DiagnosisExpertOut]):
     key = "diagnosis"
+    name = "诊断专家"
     role_prompt = DIAGNOSIS_SYSTEM_PROMPT
     output_type = DiagnosisExpertOut
+    expertise = ("diagnosis", "wrong_words", "error_patterns")
+    priority = 20
 
     def build_fallback(self, blackboard: Blackboard) -> DiagnosisExpertOut:
         wrong_words = blackboard.wrong_words
@@ -536,8 +569,18 @@ class DiagnosisExpert(BaseProfileExpert[DiagnosisExpertOut]):
                 f"未解决 {len(unresolved)} 个，高频错词为"
                 f"{'、'.join(item.spelling for item in focus_words[:3]) or '暂无'}。"
             )
+        confidence = round(
+            min(
+                0.95,
+                0.25
+                + min(len(wrong_words) / 10, 1) * 0.5
+                + min(total_wrong_hits / 20, 1) * 0.2,
+            ),
+            2,
+        )
         return DiagnosisExpertOut(
             source="heuristic",
+            confidence=confidence,
             summary=summary,
             tags=tags[:5],
             error_patterns=patterns,
@@ -577,8 +620,12 @@ class DiagnosisExpert(BaseProfileExpert[DiagnosisExpertOut]):
 
 class PlannerExpert(BaseProfileExpert[PlannerExpertOut]):
     key = "planner"
+    name = "规划专家"
     role_prompt = PLANNER_SYSTEM_PROMPT
     output_type = PlannerExpertOut
+    expertise = ("planner", "aggregation", "review_plan")
+    depends_on = ("data", "habit", "diagnosis")
+    priority = 10
 
     def build_fallback(self, blackboard: Blackboard) -> PlannerExpertOut:
         data = blackboard.artifacts.get("data")
@@ -689,8 +736,13 @@ class PlannerExpert(BaseProfileExpert[PlannerExpertOut]):
             f"结合正确率 {accuracy_metric}%、打卡稳定度 {consistency_metric}% 和"
             f"首要诊断“{primary_pattern}”，规划 7 天轻量复习节奏，核心覆盖 {len(focus)} 个词。"
         )
+        confidence = round(
+            (data.confidence + habit.confidence + diagnosis.confidence) / 3,
+            2,
+        )
         return PlannerExpertOut(
             source="heuristic",
+            confidence=confidence,
             summary=summary,
             tags=tags[:5],
             review_plan=review_plan,
