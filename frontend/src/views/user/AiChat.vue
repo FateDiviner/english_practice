@@ -147,6 +147,7 @@ function stopStreaming() {
 }
 
 async function removeConversation(conversationId) {
+  if (conversationId === currentId.value && isStreaming.value) stopStreaming()
   try {
     await deleteAiSession(conversationId)
     conversations.value = conversations.value.filter((item) => item.id !== conversationId)
