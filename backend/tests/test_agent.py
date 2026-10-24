@@ -2,11 +2,16 @@
 
 import json
 
+from app.db.session import async_session_factory
+from app.models.ai_conversation import AiConversation
+from app.models.ai_message import AiMessage
+from app.models.user import User
 from app.services.agent.client import ChatMessage, MockLLMClient
 from app.services.agent.intent import Intent
 from app.services.agent.router import IntentRouter, parse_intent
 from app.services.agent.service import AgentService
 from app.services.agent.skills import SkillRegistry, build_default_registry
+from sqlalchemy import delete, select
 
 
 def _build_router(llm) -> tuple[IntentRouter, SkillRegistry]:
@@ -143,23 +148,42 @@ async def test_agent_chat_requires_login(client) -> None:
     assert response.json()["code"] == 40101
 
 
+async def _cleanup_user(user_id: int) -> None:
+    async with async_session_factory() as session:
+        conversation_ids = select(AiConversation.id).where(
+            AiConversation.user_id == user_id,
+        )
+        await session.execute(
+            delete(AiMessage).where(AiMessage.conversation_id.in_(conversation_ids)),
+        )
+        await session.execute(
+            delete(AiConversation).where(AiConversation.user_id == user_id),
+        )
+        await session.execute(delete(User).where(User.id == user_id))
+        await session.commit()
+
+
 async def test_agent_chat_streams_sse(client) -> None:
     from tests.practice_answer_helpers import create_user
 
-    headers, _ = await create_user(client, "agent_chat")
-    response = await client.post(
-        "/api/v1/agent/chat",
-        headers=headers,
-        json={"message": "把这句话翻译成英文：你好", "scene": None, "history": []},
-    )
-    assert response.status_code == 200
-    assert response.headers["content-type"].startswith("text/event-stream")
-    body = response.text
-    assert "event: meta" in body
-    assert "event: delta" in body
-    assert "event: done" in body
-    meta_line = next(line for line in body.splitlines() if line.startswith("data: {"))
-    meta = json.loads(meta_line.removeprefix("data: "))
-    assert meta["intent"] == Intent.TRANSLATION.value
-    assert meta["skill"] == "translation"
-    assert meta["confidence"] == 95
+    headers, user_id = await create_user(client, "agent_chat")
+    try:
+        response = await client.post(
+            "/api/v1/agent/chat",
+            headers=headers,
+            json={"message": "把这句话翻译成英文：你好", "scene": None, "history": []},
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        body = response.text
+        assert "event: meta" in body
+        assert "event: delta" in body
+        assert "event: done" in body
+        meta_line = next(line for line in body.splitlines() if line.startswith("data: {"))
+        meta = json.loads(meta_line.removeprefix("data: "))
+        assert meta["intent"] == Intent.TRANSLATION.value
+        assert meta["skill"] == "translation"
+        assert meta["confidence"] == 95
+        assert isinstance(meta["conversation_id"], int)
+    finally:
+        await _cleanup_user(user_id)

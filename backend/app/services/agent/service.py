@@ -24,16 +24,17 @@ class AgentService:
         self._skills = skills
         self._llm = llm
 
-    async def stream_chat(
+    async def stream_events(
         self,
         message: str,
         scene: str | None = None,
         history: list[ChatMessage] | None = None,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[tuple[str, dict]]:
+        """依次产出 (事件名, 负载)，便于上层累计 delta 并持久化。"""
         decision = await self._router.decide(message)
         skill = self._skills.get(decision.intent)
         context = SkillContext(scene=scene, history=list(history or []))
-        yield format_sse(
+        yield (
             "meta",
             {
                 "intent": decision.intent.value,
@@ -54,8 +55,17 @@ class AgentService:
         )
         messages = skill.build_messages(message, context)
         async for chunk in self._llm.stream(messages):
-            yield format_sse("delta", {"content": chunk})
-        yield format_sse("done", {"finish_reason": "stop"})
+            yield "delta", {"content": chunk}
+        yield "done", {"finish_reason": "stop"}
+
+    async def stream_chat(
+        self,
+        message: str,
+        scene: str | None = None,
+        history: list[ChatMessage] | None = None,
+    ) -> AsyncIterator[str]:
+        async for event, payload in self.stream_events(message, scene=scene, history=history):
+            yield format_sse(event, payload)
 
 
 @lru_cache
