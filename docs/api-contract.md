@@ -137,6 +137,50 @@ Content-Type: multipart/form-data
 ### GET /admin/users/{id}/stats
 响应 data：同 /stats/overview
 
+### POST /admin/users/{id}/profile
+管理员触发指定用户的“学情画像分析体”。后端将 word_progress、wrong_words、
+practice_sessions 装入 Blackboard Context，依次运行数据、习惯、诊断、规划四位专家，
+返回可直接渲染标签与雷达图的结构化 JSON。
+
+响应 data：
+```json
+{
+  "user": { "id": 1, "username": "learner" },
+  "generated_at": "2026-10-24T00:00:00Z",
+  "cache": { "hit": false, "ttl_seconds": 21600, "expires_at": "2026-10-24T06:00:00Z" },
+  "coverage": {
+    "word_progress_count": 120,
+    "wrong_word_count": 18,
+    "practice_session_count": 35,
+    "first_practice_at": "2026-09-01T08:00:00",
+    "last_practice_at": "2026-10-23T12:30:00"
+  },
+  "summary": {
+    "headline": "learner 的学情画像：良好，正确率稳定",
+    "level": "good",
+    "tags": ["正确率稳定", "连续打卡", "re- 前缀薄弱"],
+    "radar_metrics": [
+      { "key": "accuracy", "label": "正确率", "score": 82, "category": "data" }
+    ],
+    "highlights": ["近期正确率较前期提升 6.0 个百分点"],
+    "risks": ["re- 前缀错词占比偏高"]
+  },
+  "agents": {
+    "data": { "source": "llm", "summary": "...", "tags": [], "accuracy_trend": [], "vocabulary_distribution": [], "metrics": [], "highlights": [], "risks": [] },
+    "habit": { "source": "llm", "summary": "...", "tags": [], "weekly_frequency": [], "checkin_pattern": [], "average_duration_minutes": 18.5, "total_duration_minutes": 647.5, "active_days": 24, "current_streak_days": 4, "longest_streak_days": 9, "preferred_time_slot": "晚间", "metrics": [], "highlights": [], "risks": [] },
+    "diagnosis": { "source": "llm", "summary": "...", "tags": [], "error_patterns": [], "focus_words": [], "metrics": [], "risks": [] },
+    "planner": { "source": "llm", "summary": "...", "tags": [], "review_plan": [], "weekly_goals": [], "recommendations": [], "metrics": [] }
+  },
+  "agent_sequence": ["data", "habit", "diagnosis", "planner"]
+}
+```
+说明：
+- `source=heuristic` 表示真实模型不可用或输出不是合法 JSON，已自动回退到可复现的本地统计结果。
+- `radar_metrics` 中每个 `score` 均为 0~100，可直接映射 ECharts/Chart.js 雷达图。
+- 缓存键包含学习数据指纹；数据未变化时直接返回缓存报告，默认 TTL 由
+  `PROFILE_CACHE_TTL_SECONDS` 控制（21600 秒）。数据变化后自动生成新报告。
+- 未登录返回 401，非管理员返回 403，用户不存在返回 404。
+
 ## 管理员 · 概览
 ### GET /admin/overview
 响应 data：{ total_users, active_users, total_wordbooks, total_words, today_sessions, today_answers }

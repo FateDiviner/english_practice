@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.admin_import import router as admin_import_router
+from app.api.v1.admin_profile import router as admin_profile_router
 from app.api.v1.admin_stats import router as admin_stats_router
 from app.api.v1.admin_users import router as admin_users_router
 from app.api.v1.admin_wordbooks import router as admin_wordbooks_router
@@ -24,6 +25,7 @@ api_router.include_router(health_router)
 api_router.include_router(admin_stats_router)
 api_router.include_router(admin_import_router)
 api_router.include_router(admin_users_router)
+api_router.include_router(admin_profile_router)
 api_router.include_router(admin_wordbooks_router)
 api_router.include_router(admin_words_router)
 api_router.include_router(wordbooks_router)

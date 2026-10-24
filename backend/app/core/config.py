@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     AI_API_KEY: str = ""
     AI_PROVIDER: str = "mock"
     AI_MODEL: str = "qwen2.5:7b"
+    PROFILE_CACHE_TTL_SECONDS: int = 21600
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",
