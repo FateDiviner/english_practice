@@ -20,7 +20,8 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.agent.heuristics import find_english_word, keyword_classify
-from app.services.agent.prompts import ROUTER_PROMPT_TAG
+from app.services.agent.intent import Intent
+from app.services.agent.prompts import ROUTER_SCORE_PROMPT_TAG
 
 MOCK_CHUNK_DELAY_SECONDS = 0.01
 REQUEST_TIMEOUT_SECONDS = 60
@@ -58,9 +59,17 @@ class MockLLMClient:
     def _reply(self, messages: list[ChatMessage]) -> str:
         user_text = messages[-1].content
         system_text = messages[0].content if messages else ""
-        if system_text.startswith(ROUTER_PROMPT_TAG) or user_text.startswith(ROUTER_PROMPT_TAG):
-            message = user_text.splitlines()[-1].split("：")[-1].strip()
-            return keyword_classify(message).value
+        if system_text.startswith(ROUTER_SCORE_PROMPT_TAG) or user_text.startswith(
+            ROUTER_SCORE_PROMPT_TAG
+        ):
+            message = user_text.rsplit("用户问题：", 1)[-1].strip()
+            selected = keyword_classify(message)
+            scores = {intent.value: 5 for intent in Intent}
+            scores[selected.value] = 95
+            return json.dumps(
+                {"scores": scores, "reason": "Mock 关键词路由"},
+                ensure_ascii=False,
+            )
         return _mock_skill_reply(system_text, user_text)
 
 
@@ -71,6 +80,13 @@ def _mock_skill_reply(system_text: str, user_text: str) -> str:
         return _oral_practice_reply()
     if "[SKILL:GRAMMAR]" in system_text:
         return _grammar_reply()
+    if "[SKILL:TRANSLATION]" in system_text:
+        return (
+            "（Mock 翻译）译文：这是一条用于跑通翻译技能链路的模拟结果。\n"
+            "用词说明：真实模型接入后将按原文语气给出准确译文。"
+        )
+    if "[SKILL:GENERAL]" in system_text:
+        return "（Mock 通用助手）已收到你的问题，我可以继续提供英语学习建议。"
     return "（Mock 回复）我是智能伴学助手，已收到你的消息。"
 
 

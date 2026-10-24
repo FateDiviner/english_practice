@@ -195,8 +195,22 @@ practice_sessions 装入 Blackboard Context，依次运行数据、习惯、诊�
 ### POST /agent/chat
 请求：{ message: str, scene: str | null, history: [ { role: "user" | "assistant", content: str } ] }
 响应：SSE 流（text/event-stream），事件序列：
-- event: meta  data: { intent: "EXPLAIN_WORD" | "GRAMMAR" | "ORAL_PRACTICE", skill: str, scene: str | null }
+- event: meta  data:
+  {
+    intent: "EXPLAIN_WORD" | "GRAMMAR" | "ORAL_PRACTICE" | "TRANSLATION" | "GENERAL",
+    skill: "explain_word" | "grammar" | "oral_practice" | "translation" | "general",
+    scene: str | null,
+    confidence: 0~100,
+    fallback_used: bool,
+    candidates: [ { intent: str, skill: str, score: 0~100 } ],
+    reason: str | null
+  }
 - event: delta  data: { content: str }（增量文本，前端打字机拼接）
 - event: done  data: { finish_reason: "stop" }
-说明：scene 取值 restaurant / interview / hotel / airport，仅 ORAL_PRACTICE 意图使用；
-未配置 AI_PROVIDER/AI_API_KEY 时返回 Mock 假数据流。
+
+说明：
+- Router 根据注册表动态生成技能说明，请模型为全部技能评分；取最高分技能分发。
+- 模型调用或 JSON 解析失败时，使用本地关键词规则，`fallback_used=true`。
+- `GENERAL` 是默认兜底技能；`TRANSLATION` 处理中英互译。
+- scene 取值 restaurant / interview / hotel / airport，仅 ORAL_PRACTICE 意图使用。
+- 未配置 AI_PROVIDER/AI_API_KEY 时返回 Mock 假数据流。

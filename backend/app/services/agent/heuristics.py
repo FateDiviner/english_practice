@@ -10,9 +10,31 @@ from app.services.agent.intent import Intent
 
 _ORAL_KEYWORDS = ("口语", "对练", "陪练", "对话练习", "练口语", "说英语", "点餐", "面试")
 
+_TRANSLATION_KEYWORDS = (
+    "翻译",
+    "translate",
+    "英译汉",
+    "汉译英",
+    "中译英",
+    "英译中",
+)
+
+_GRAMMAR_KEYWORDS = (
+    "语法",
+    "时态",
+    "语态",
+    "从句",
+    "纠错",
+    "批改",
+    "病句",
+    "主谓一致",
+    "过去完成时",
+    "grammar",
+)
+
 _WORD_KEYWORDS = ("什么意思", "单词", "词根", "词缀", "记忆", "用法", "搭配", "meaning of")
 
-_SINGLE_WORD_PATTERN = re.compile(r"^[A-Za-z][A-Za-z' -]{0,30}$")
+_SINGLE_WORD_PATTERN = re.compile(r"^[A-Za-z][A-Za-z'-]{0,30}$")
 
 _ENGLISH_TOKEN_PATTERN = re.compile(r"[A-Za-z][A-Za-z'-]{1,30}")
 
@@ -26,10 +48,14 @@ def find_english_word(message: str) -> str | None:
 def keyword_classify(message: str) -> Intent:
     """基于关键词的本地意图分类，作为模型输出解析失败的兜底。"""
     text = message.strip().lower()
+    if any(keyword in text for keyword in _TRANSLATION_KEYWORDS):
+        return Intent.TRANSLATION
     if any(keyword in text for keyword in _ORAL_KEYWORDS):
         return Intent.ORAL_PRACTICE
-    if _SINGLE_WORD_PATTERN.match(text):
-        return Intent.EXPLAIN_WORD
+    if any(keyword in text for keyword in _GRAMMAR_KEYWORDS):
+        return Intent.GRAMMAR
     if any(keyword in text for keyword in _WORD_KEYWORDS) and find_english_word(message):
         return Intent.EXPLAIN_WORD
-    return Intent.GRAMMAR
+    if _SINGLE_WORD_PATTERN.match(text):
+        return Intent.EXPLAIN_WORD
+    return Intent.GENERAL

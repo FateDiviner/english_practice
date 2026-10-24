@@ -6,7 +6,17 @@ from app.services.agent.client import ChatMessage, MockLLMClient
 from app.services.agent.intent import Intent
 from app.services.agent.router import IntentRouter, parse_intent
 from app.services.agent.service import AgentService
-from app.services.agent.skills import build_default_registry
+from app.services.agent.skills import SkillRegistry, build_default_registry
+
+
+def _build_router(llm) -> tuple[IntentRouter, SkillRegistry]:
+    skills = build_default_registry()
+    return IntentRouter(llm, skills), skills
+
+
+def _build_service(llm) -> AgentService:
+    router, skills = _build_router(llm)
+    return AgentService(router=router, skills=skills, llm=llm)
 
 
 async def _collect(
@@ -36,42 +46,95 @@ async def test_mock_client_streams_full_text() -> None:
 async def test_parse_intent_accepts_enum_text() -> None:
     assert parse_intent("EXPLAIN_WORD") == Intent.EXPLAIN_WORD
     assert parse_intent(" grammar ") == Intent.GRAMMAR
+    assert parse_intent("translation") == Intent.TRANSLATION
+    assert parse_intent("GENERAL") == Intent.GENERAL
     assert parse_intent("随便聊聊") is None
     assert parse_intent("oral_practice") == Intent.ORAL_PRACTICE
 
 
+def test_registry_registers_all_skills_and_default() -> None:
+    registry = build_default_registry()
+
+    assert [item.value for item in registry.list_intents()] == [
+        "EXPLAIN_WORD",
+        "GRAMMAR",
+        "ORAL_PRACTICE",
+        "TRANSLATION",
+        "GENERAL",
+    ]
+    assert registry.default_intent == Intent.GENERAL
+    assert registry.get(Intent.GENERAL).name == "general"
+    assert registry.get_by_name("translation").intent == Intent.TRANSLATION
+
+
 async def test_router_classify_word_question() -> None:
-    router = IntentRouter(MockLLMClient())
+    router, _ = _build_router(MockLLMClient())
     assert await router.classify("abandon 是什么意思") == Intent.EXPLAIN_WORD
     assert await router.classify("meticulous") == Intent.EXPLAIN_WORD
 
 
 async def test_router_classify_grammar_and_oral() -> None:
-    router = IntentRouter(MockLLMClient())
+    router, _ = _build_router(MockLLMClient())
     assert await router.classify("过去完成时怎么用") == Intent.GRAMMAR
     assert await router.classify("我想练口语，来个面试对话") == Intent.ORAL_PRACTICE
 
 
+async def test_router_classify_translation_and_general() -> None:
+    router, _ = _build_router(MockLLMClient())
+    assert await router.classify("把这句话翻译成英文：今天天气很好") == Intent.TRANSLATION
+    assert await router.classify("今天午饭吃什么比较好") == Intent.GENERAL
+
+
+async def test_router_returns_confidence_and_ranked_candidates() -> None:
+    router, _ = _build_router(MockLLMClient())
+    decision = await router.decide("把这句话翻译成英文：今天天气很好")
+
+    assert decision.intent == Intent.TRANSLATION
+    assert decision.skill == "translation"
+    assert decision.confidence == 95
+    assert decision.fallback_used is False
+    assert len(decision.candidates) == 5
+    assert decision.candidates[0].intent == Intent.TRANSLATION
+
+
+async def test_router_falls_back_when_llm_json_is_invalid() -> None:
+    class InvalidRouterLLM:
+        async def stream(self, _messages):
+            yield "这不是 JSON"
+
+    router, _ = _build_router(InvalidRouterLLM())
+    decision = await router.decide("解方程 x + 1 = 2")
+
+    assert decision.intent == Intent.GENERAL
+    assert decision.fallback_used is True
+    assert decision.confidence == 90
+    assert "本地关键词" in (decision.reason or "")
+
+
 async def test_service_stream_chat_emits_meta_delta_done() -> None:
-    llm = MockLLMClient()
-    service = AgentService(router=IntentRouter(llm), skills=build_default_registry(), llm=llm)
+    service = _build_service(MockLLMClient())
     events = await _collect(service, "abandon 是什么意思")
     names = [event for event, _ in events]
     assert names[0] == "meta"
     assert names[-1] == "done"
     assert set(names) == {"meta", "delta", "done"}
-    assert events[0][1]["intent"] == Intent.EXPLAIN_WORD.value
-    assert events[0][1]["skill"] == "explain_word"
+    meta = events[0][1]
+    assert meta["intent"] == Intent.EXPLAIN_WORD.value
+    assert meta["skill"] == "explain_word"
+    assert meta["confidence"] == 95
+    assert meta["fallback_used"] is False
+    assert len(meta["candidates"]) == 5
     content = "".join(payload["content"] for event, payload in events if event == "delta")
     assert "abandon" in content
 
 
 async def test_service_stream_chat_oral_practice_scene() -> None:
-    llm = MockLLMClient()
-    service = AgentService(router=IntentRouter(llm), skills=build_default_registry(), llm=llm)
+    service = _build_service(MockLLMClient())
     events = await _collect(service, "帮我练点餐口语", scene="restaurant")
-    assert events[0][1]["intent"] == Intent.ORAL_PRACTICE
-    assert events[0][1]["scene"] == "restaurant"
+    meta = events[0][1]
+    assert meta["intent"] == Intent.ORAL_PRACTICE
+    assert meta["scene"] == "restaurant"
+    assert meta["skill"] == "oral_practice"
 
 
 async def test_agent_chat_requires_login(client) -> None:
@@ -87,7 +150,7 @@ async def test_agent_chat_streams_sse(client) -> None:
     response = await client.post(
         "/api/v1/agent/chat",
         headers=headers,
-        json={"message": "abandon 是什么意思", "scene": None, "history": []},
+        json={"message": "把这句话翻译成英文：你好", "scene": None, "history": []},
     )
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -96,4 +159,7 @@ async def test_agent_chat_streams_sse(client) -> None:
     assert "event: delta" in body
     assert "event: done" in body
     meta_line = next(line for line in body.splitlines() if line.startswith("data: {"))
-    assert json.loads(meta_line.removeprefix("data: "))["intent"] == Intent.EXPLAIN_WORD.value
+    meta = json.loads(meta_line.removeprefix("data: "))
+    assert meta["intent"] == Intent.TRANSLATION.value
+    assert meta["skill"] == "translation"
+    assert meta["confidence"] == 95
