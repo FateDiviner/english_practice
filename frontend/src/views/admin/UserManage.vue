@@ -1,15 +1,14 @@
 <script setup>
-import { reactive, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 import {
   getAdminUserProfile,
   getAdminUserStats,
   listAdminUsers,
-  resetAdminUserPassword,
   updateAdminUserStatus,
 } from '../../api/admin'
-import AdminDrawer from '../../components/AdminDrawer.vue'
 import PagePagination from '../../components/PagePagination.vue'
+import ResetPasswordDrawer from '../../components/admin/ResetPasswordDrawer.vue'
 import UserStatsDrawer from '../../components/admin/UserStatsDrawer.vue'
 import { useAuthStore } from '../../stores/auth'
 import { getErrorMessage } from '../../utils/errors'
@@ -29,9 +28,6 @@ const noticeMessage = ref('')
 const updatingId = ref(null)
 const resetDrawerOpen = ref(false)
 const resetTarget = ref(null)
-const resetForm = reactive({ password: '', confirmPassword: '' })
-const resetError = ref('')
-const isResetting = ref(false)
 const statsDrawerOpen = ref(false)
 const statsTarget = ref(null)
 const stats = ref(null)
@@ -95,32 +91,11 @@ async function toggleStatus(user) {
 
 function openReset(user) {
   resetTarget.value = user
-  resetForm.password = ''
-  resetForm.confirmPassword = ''
-  resetError.value = ''
   resetDrawerOpen.value = true
 }
 
-async function submitReset() {
-  resetError.value = ''
-  if (resetForm.password.length < 8) {
-    resetError.value = '新密码至少需要 8 位。'
-    return
-  }
-  if (resetForm.password !== resetForm.confirmPassword) {
-    resetError.value = '两次输入的新密码不一致。'
-    return
-  }
-  isResetting.value = true
-  try {
-    await resetAdminUserPassword(resetTarget.value.id, resetForm.password)
-    resetDrawerOpen.value = false
-    noticeMessage.value = `已重置 ${resetTarget.value.username} 的密码。`
-  } catch (error) {
-    resetError.value = getErrorMessage(error, '密码没有重置成功。')
-  } finally {
-    isResetting.value = false
-  }
+function handleResetSubmitted(user) {
+  noticeMessage.value = `已重置 ${user.username} 的密码。`
 }
 
 async function openStats(user) {
@@ -256,49 +231,12 @@ watch(page, loadUsers, { immediate: true })
       :total="total"
     />
 
-    <AdminDrawer
+    <ResetPasswordDrawer
       :open="resetDrawerOpen"
-      title="重置用户密码"
-      :description="resetTarget ? `正在处理：${resetTarget.username}` : ''"
+      :user="resetTarget"
+      @submitted="handleResetSubmitted"
       @close="resetDrawerOpen = false"
-    >
-      <form class="reset-form" @submit.prevent="submitReset">
-        <label class="field">
-          <span class="field-label">新密码</span>
-          <input
-            v-model="resetForm.password"
-            class="field-input"
-            type="password"
-            minlength="8"
-            maxlength="72"
-            autocomplete="new-password"
-          />
-        </label>
-        <label class="field">
-          <span class="field-label">确认新密码</span>
-          <input
-            v-model="resetForm.confirmPassword"
-            class="field-input"
-            type="password"
-            minlength="8"
-            maxlength="72"
-            autocomplete="new-password"
-          />
-        </label>
-        <p v-if="resetError" class="inline-notice inline-notice--error" role="alert">
-          {{ resetError }}
-        </p>
-        <p class="field-help">重置后旧密码立即失效，请通过安全渠道告知用户。</p>
-        <div class="form-actions">
-          <button class="secondary-button" type="button" @click="resetDrawerOpen = false">
-            取消
-          </button>
-          <button class="primary-button" type="submit" :disabled="isResetting">
-            {{ isResetting ? '重置中…' : '确认重置' }}
-          </button>
-        </div>
-      </form>
-    </AdminDrawer>
+    />
 
     <UserStatsDrawer
       :open="statsDrawerOpen"
