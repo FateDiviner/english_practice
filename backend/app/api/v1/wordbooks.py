@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
 from app.db.session import get_session
+from app.models.user import User
 from app.schemas.common import ApiResponse
 from app.schemas.word import UserWordItem, UserWordListOut
 from app.schemas.wordbook import (
@@ -29,11 +30,12 @@ router = APIRouter(
 @router.get("", response_model=ApiResponse[UserWordbookListOut])
 async def list_wordbooks_endpoint(
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> ApiResponse[UserWordbookListOut]:
-    """分页返回所有 published 词书及学习进度。"""
-    rows, total = await list_published_wordbooks(session, page, page_size)
+    """分页返回所有 published 词书及当前用户的学习进度。"""
+    rows, total = await list_published_wordbooks(session, page, page_size, current_user.id)
     items = [
         UserWordbookItem(
             id=wordbook.id,
@@ -41,10 +43,9 @@ async def list_wordbooks_endpoint(
             description=wordbook.description,
             level=wordbook.level,
             word_count=word_count,
-            # word_progress 暂未建表，本阶段 mastered 固定返回 0。
-            my_progress=UserWordbookProgress(mastered=0, total=word_count),
+            my_progress=UserWordbookProgress(mastered=mastered_count, total=word_count),
         )
-        for wordbook, word_count in rows
+        for wordbook, word_count, mastered_count in rows
     ]
     return ApiResponse[UserWordbookListOut](
         code=0,
@@ -82,16 +83,18 @@ async def get_wordbook_endpoint(
 async def list_wordbook_words_endpoint(
     wordbook_id: int,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     mastery: Annotated[int | None, Query(ge=0, le=2)] = None,
 ) -> ApiResponse[UserWordListOut]:
-    """分页返回 published 词书单词；mastery 暂未实现。"""
+    """分页返回 published 词书单词及当前用户的掌握度。"""
     words, total = await list_published_words(
         session,
         wordbook_id=wordbook_id,
         page=page,
         page_size=page_size,
+        user_id=current_user.id,
         mastery=mastery,
     )
     return ApiResponse[UserWordListOut](
@@ -107,9 +110,9 @@ async def list_wordbook_words_endpoint(
                     meaning_cn=word.meaning_cn,
                     part_of_speech=word.part_of_speech,
                     audio_url=word.audio_url,
-                    mastery_level=None,
+                    mastery_level=mastery_level,
                 )
-                for word in words
+                for word, mastery_level in words
             ],
             total=total,
             page=page,

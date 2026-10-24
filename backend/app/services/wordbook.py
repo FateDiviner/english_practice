@@ -1,4 +1,4 @@
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,8 +9,11 @@ from app.core.exception_handlers import (
     AppError,
 )
 from app.models.word import Word
+from app.models.word_progress import WordProgress
 from app.models.wordbook import Wordbook
 from app.schemas.wordbook import WordbookCreateIn, WordbookUpdateIn
+
+MASTERED_LEVEL = 2
 
 
 async def create_wordbook(
@@ -118,17 +121,33 @@ async def list_published_wordbooks(
     session: AsyncSession,
     page: int,
     page_size: int,
-) -> tuple[list[tuple[Wordbook, int]], int]:
-    """分页查询 published 词书并附带单词数。"""
+    user_id: int,
+) -> tuple[list[tuple[Wordbook, int, int]], int]:
+    """分页查询 published 词书，附带词数与该用户已掌握词数。"""
     word_count = (
         select(func.count(Word.id))
         .where(Word.wordbook_id == Wordbook.id)
         .correlate(Wordbook)
         .scalar_subquery()
     )
+    mastered_count = (
+        select(func.count(WordProgress.id))
+        .join(Word, Word.id == WordProgress.word_id)
+        .where(
+            Word.wordbook_id == Wordbook.id,
+            WordProgress.user_id == user_id,
+            WordProgress.mastery_level == MASTERED_LEVEL,
+        )
+        .correlate(Wordbook)
+        .scalar_subquery()
+    )
     conditions = [Wordbook.status == "published"]
     result = await session.execute(
-        select(Wordbook, word_count.label("word_count"))
+        select(
+            Wordbook,
+            word_count.label("word_count"),
+            mastered_count.label("mastered_count"),
+        )
         .where(*conditions)
         .order_by(Wordbook.created_at.desc(), Wordbook.id.desc())
         .offset((page - 1) * page_size)
@@ -163,19 +182,34 @@ async def list_published_words(
     wordbook_id: int,
     page: int,
     page_size: int,
+    user_id: int,
     mastery: int | None = None,
-) -> tuple[list[Word], int]:
-    """分页查询 published 词书中的单词；mastery 暂未实现，仅接收参数。"""
+) -> tuple[list[tuple[Word, int]], int]:
+    """分页查询 published 词书中的单词，并附带当前用户的掌握度。"""
     await get_published_wordbook(session, wordbook_id)
-    # word_progress 尚未建表，mastery 过滤暂时忽略，响应统一返回 null。
-    _ = mastery
+    mastery_level = func.coalesce(WordProgress.mastery_level, 0)
+    progress_join = and_(
+        WordProgress.word_id == Word.id,
+        WordProgress.user_id == user_id,
+    )
     conditions = [Word.wordbook_id == wordbook_id]
+    if mastery is not None:
+        conditions.append(mastery_level == mastery)
+
     result = await session.execute(
-        select(Word)
+        select(Word, mastery_level.label("mastery_level"))
+        .outerjoin(WordProgress, progress_join)
         .where(*conditions)
         .order_by(Word.sort_order.asc(), Word.id.asc())
         .offset((page - 1) * page_size)
         .limit(page_size),
     )
-    total = await session.scalar(select(func.count(Word.id)).where(*conditions)) or 0
-    return list(result.scalars().all()), total
+    total = (
+        await session.scalar(
+            select(func.count(Word.id))
+            .outerjoin(WordProgress, progress_join)
+            .where(*conditions),
+        )
+        or 0
+    )
+    return list(result.all()), total
