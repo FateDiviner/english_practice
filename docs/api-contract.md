@@ -189,15 +189,37 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
 ### GET /admin/overview
 响应 data：{ total_users, active_users, total_wordbooks, total_words, today_sessions, today_answers }
 
-## AI 对话（预留，本期返回 501）
-### POST /ai/chat
-### GET /ai/sessions
+## AI 对话会话
+所有接口需要登录，仅能访问当前用户自己的会话。
+
+### GET /ai/sessions?page=&page_size=
+响应 data：
+{ items: [ { id, title, scene, created_at, updated_at, message_count } ], total, page, page_size }
+按 `updated_at` 倒序排列。
+
 ### POST /ai/sessions
-响应：{ code: 501, message: "not implemented", data: null }
+请求：{ title?: str, scene?: str }
+响应 201 data：{ id, title, scene, created_at, updated_at }
+
+### GET /ai/sessions/{id}
+响应 data：
+{ id, title, scene, created_at, updated_at, messages: [ { id, role, content, created_at } ] }
+消息按 `id` 正序。会话不存在或不属于当前用户统一返回 404。
+
+### DELETE /ai/sessions/{id}
+响应 data：{ deleted: true }；消息随外键级联删除。
 
 ## 智能伴学 Agent（Router + Skill）
 ### POST /agent/chat
-请求：{ message: str, scene: str | null, history: [ { role: "user" | "assistant", content: str } ] }
+请求：
+{ message: str, scene: str | null, conversation_id?: int | null,
+  history: [ { role: "user" | "assistant", content: str } ] }
+
+- 传入 `conversation_id` 时，后端校验会话归属并读取最近 20 条数据库消息作为上下文；
+- 不传时新建会话，标题取首条用户消息压缩空白后的前 30 字；
+- 用户消息在流开始前写入 `ai_messages`，assistant 全文在流结束后写入；
+  客户端中断时保存已生成的部分文本。
+
 响应：SSE 流（text/event-stream），事件序列：
 - event: meta  data:
   {
@@ -207,14 +229,17 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
     confidence: 0~100,
     fallback_used: bool,
     candidates: [ { intent: str, skill: str, score: 0~100 } ],
-    reason: str | null
+    reason: str | null,
+    conversation_id: int
   }
 - event: delta  data: { content: str }（增量文本，前端打字机拼接）
 - event: done  data: { finish_reason: "stop" }
+- event: error  data: { message: str }（生成失败时出现，已生成的部分仍会落库）
 
 说明：
 - Router 根据注册表动态生成技能说明，请模型为全部技能评分；取最高分技能分发。
 - 模型调用或 JSON 解析失败时，使用本地关键词规则，`fallback_used=true`。
 - `GENERAL` 是默认兜底技能；`TRANSLATION` 处理中英互译。
-- scene 取值 restaurant / interview / hotel / airport，仅 ORAL_PRACTICE 意图使用。
+- scene 取值 restaurant / interview / travel / campus，仅 ORAL_PRACTICE 意图使用。
 - 未配置 AI_PROVIDER/AI_API_KEY 时返回 Mock 假数据流。
+- 未登录返回 401；会话不存在或不属于当前用户返回 404。
