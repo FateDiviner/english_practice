@@ -107,10 +107,9 @@ onMounted(async () => {
         <span class="text-link">进入练习 →</span>
       </RouterLink>
       <RouterLink class="ai-note" to="/ai-chat">
-        <span class="ai-note__badge">即将上线</span>
         <span class="eyebrow">AI CONVERSATION</span>
         <h2>把学到的词带进对话</h2>
-        <p>自由对话与情景练习正在筹备中。</p>
+        <p>问单词、问语法、练口语，打开就能开始。</p>
       </RouterLink>
     </section>
   </div>

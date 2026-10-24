@@ -26,7 +26,7 @@ request.interceptors.request.use((config) => {
   return config
 })
 
-function handleUnauthenticated() {
+export function handleUnauthenticated() {
   const authStore = useAuthStore(pinia)
   authStore.clearSession()
   const currentPath = window.location.pathname

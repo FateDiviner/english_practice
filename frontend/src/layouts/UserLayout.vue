@@ -14,7 +14,7 @@ const navItems = [
   { index: '03', label: '练习', to: '/practice', name: 'practice' },
   { index: '04', label: '错词本', to: '/wrong-words', name: 'wrong-words' },
   { index: '05', label: '我的', to: '/profile', name: 'profile' },
-  { index: '06', label: 'AI 对话', to: '/ai-chat', name: 'ai-chat', upcoming: true },
+  { index: '06', label: 'AI 对话', to: '/ai-chat', name: 'ai-chat' },
 ]
 
 const activeName = computed(() => route.name)
@@ -47,7 +47,6 @@ function logout() {
         >
           <span class="nav-link__index">{{ item.index }}</span>
           <span class="nav-link__label">{{ item.label }}</span>
-          <span v-if="item.upcoming" class="nav-link__badge">即将上线</span>
         </RouterLink>
       </nav>
 

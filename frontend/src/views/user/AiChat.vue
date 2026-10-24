@@ -1,155 +1,231 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+
+import {
+  createAiSession,
+  deleteAiSession,
+  getAiSession,
+  listAiSessions,
+  streamAgentChat,
+} from '../../api/ai'
+import ChatComposer from '../../components/ai/ChatComposer.vue'
+import ConversationSidebar from '../../components/ai/ConversationSidebar.vue'
+import MessageList from '../../components/ai/MessageList.vue'
+import { getErrorMessage } from '../../utils/errors'
+
+const conversations = ref([])
+const currentId = ref(null)
+const messages = ref([])
+const isLoadingSessions = ref(true)
+const isLoadingMessages = ref(false)
+const isStreaming = ref(false)
+const sessionError = ref('')
+const errorMessage = ref('')
+const scene = ref('')
+const sidebarOpen = ref(false)
+let controller = null
+
+const currentTitle = computed(
+  () => conversations.value.find((item) => item.id === currentId.value)?.title || '新对话',
+)
+
+async function loadSessions() {
+  isLoadingSessions.value = true
+  sessionError.value = ''
+  try {
+    const result = await listAiSessions({ page: 1, pageSize: 50 })
+    conversations.value = result.items || []
+    const target = conversations.value[0]?.id ?? null
+    if (target !== currentId.value) await selectConversation(target)
+  } catch (error) {
+    sessionError.value = getErrorMessage(error, '对话列表暂时无法读取。')
+  } finally {
+    isLoadingSessions.value = false
+  }
+}
+
+async function selectConversation(conversationId) {
+  if (isStreaming.value) stopStreaming()
+  currentId.value = conversationId
+  errorMessage.value = ''
+  sidebarOpen.value = false
+
+  if (conversationId == null) {
+    messages.value = []
+    scene.value = ''
+    return
+  }
+
+  isLoadingMessages.value = true
+  try {
+    const detail = await getAiSession(conversationId)
+    if (currentId.value !== conversationId) return
+    messages.value = (detail.messages || []).map((item) => ({
+      role: item.role,
+      content: item.content,
+    }))
+    scene.value = detail.scene || ''
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '这段对话暂时打不开。')
+  } finally {
+    isLoadingMessages.value = false
+  }
+}
+
+async function startNewConversation() {
+  if (isStreaming.value) return
+  errorMessage.value = ''
+  try {
+    const created = await createAiSession({ scene: scene.value || null })
+    conversations.value = [created, ...conversations.value]
+    currentId.value = created.id
+    messages.value = []
+    sidebarOpen.value = false
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '新对话没有创建成功。')
+  }
+}
+
+async function refreshConversations() {
+  try {
+    const result = await listAiSessions({ page: 1, pageSize: 50 })
+    conversations.value = result.items || []
+  } catch {
+    // 列表刷新失败不影响当前对话。
+  }
+}
+
+async function sendMessage(text) {
+  if (isStreaming.value) return
+  if (currentId.value == null) {
+    await startNewConversation()
+    if (currentId.value == null) return
+  }
+
+  const conversationId = currentId.value
+  errorMessage.value = ''
+  messages.value.push({ role: 'user', content: text })
+  const reply = { role: 'assistant', content: '', meta: null, streaming: true }
+  messages.value.push(reply)
+
+  isStreaming.value = true
+  controller = new AbortController()
+  try {
+    await streamAgentChat({
+      message: text,
+      scene: scene.value || null,
+      conversationId,
+      signal: controller.signal,
+      onMeta(data) {
+        reply.meta = data
+      },
+      onDelta(data) {
+        reply.content += data?.content || ''
+      },
+      onDone() {
+        reply.streaming = false
+      },
+    })
+    reply.streaming = false
+  } catch (error) {
+    reply.streaming = false
+    if (error?.name === 'AbortError') {
+      reply.stopped = true
+    } else {
+      reply.failed = true
+      errorMessage.value = getErrorMessage(error, '对话没有完成，请重试。')
+    }
+  } finally {
+    isStreaming.value = false
+    controller = null
+    await refreshConversations()
+  }
+}
+
+function stopStreaming() {
+  controller?.abort()
+}
+
+async function removeConversation(conversationId) {
+  try {
+    await deleteAiSession(conversationId)
+    conversations.value = conversations.value.filter((item) => item.id !== conversationId)
+    if (currentId.value !== conversationId) return
+
+    currentId.value = null
+    messages.value = []
+    const nextId = conversations.value[0]?.id ?? null
+    if (nextId != null) await selectConversation(nextId)
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '对话没有删除成功。')
+  }
+}
+
+onMounted(loadSessions)
+onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <div class="app-page ai-page">
-    <section class="ai-sheet surface">
-      <div class="ai-sheet__mark" aria-hidden="true">
-        <span>语</span>
+  <div class="app-page ai-chat">
+    <header class="ai-chat__header">
+      <div>
+        <p class="eyebrow">GUIDED CONVERSATION</p>
+        <h1 class="page-title">智能伴学</h1>
+        <p class="page-copy">问单词、问语法、练口语，或者把一句话交给它翻译。</p>
       </div>
-      <p class="eyebrow">A ROOM NOT OPEN YET</p>
-      <h1>AI English 对话即将上线</h1>
-      <p class="ai-sheet__copy">
-        这里会是一个用英语自由交谈的练习室。你可以选择情境、和对话伙伴来回交流，
-        把刚学会的词真正用出去。
-      </p>
-      <div class="ai-sheet__rule" aria-hidden="true"></div>
-      <dl>
-        <div>
-          <dt>自由对话</dt>
-          <dd>从一句简单的问候开始。</dd>
+      <button
+        class="secondary-button ai-chat__records"
+        type="button"
+        @click="sidebarOpen = !sidebarOpen"
+      >
+        对话记录
+      </button>
+    </header>
+
+    <div class="ai-chat__body" :class="{ 'ai-chat__body--sidebar': sidebarOpen }">
+      <ConversationSidebar
+        :conversations="conversations"
+        :current-id="currentId"
+        :loading="isLoadingSessions"
+        :error="sessionError"
+        :open="sidebarOpen"
+        @select="selectConversation"
+        @create="startNewConversation"
+        @delete="removeConversation"
+        @close="sidebarOpen = false"
+      />
+      <button
+        v-if="sidebarOpen"
+        class="ai-chat__scrim"
+        type="button"
+        aria-label="收起对话记录"
+        @click="sidebarOpen = false"
+      ></button>
+
+      <section class="ai-chat__main" :aria-busy="isLoadingMessages">
+        <div class="ai-chat__main-header">
+          <span>{{ currentTitle }}</span>
+          <span v-if="isStreaming" class="ai-chat__status">正在回复…</span>
+          <span v-else-if="isLoadingMessages" class="ai-chat__status">正在载入…</span>
         </div>
-        <div>
-          <dt>情景练习</dt>
-          <dd>在真实语境里使用新词。</dd>
-        </div>
-        <div>
-          <dt>生词留存</dt>
-          <dd>对话中遇到的词，继续回到错词本。</dd>
-        </div>
-      </dl>
-      <p class="ai-sheet__status">本期仅开放入口与页面骨架，不会接入任何模型服务。</p>
-      <div class="ai-sheet__actions">
-        <RouterLink class="primary-button" to="/wordbooks">先去词书架</RouterLink>
-        <RouterLink class="secondary-button" to="/">返回首页</RouterLink>
-      </div>
-    </section>
+
+        <MessageList :messages="messages" @suggest="sendMessage" />
+
+        <p v-if="errorMessage" class="inline-notice inline-notice--error" role="alert">
+          {{ errorMessage }}
+        </p>
+
+        <ChatComposer
+          :disabled="isLoadingMessages"
+          :streaming="isStreaming"
+          :scene="scene"
+          @send="sendMessage"
+          @stop="stopStreaming"
+          @update:scene="scene = $event"
+        />
+      </section>
+    </div>
   </div>
 </template>
 
-<style scoped>
-.ai-page {
-  display: grid;
-  min-height: calc(100vh - 130px);
-  place-items: center;
-}
-
-.ai-sheet {
-  width: min(760px, 100%);
-  padding: 50px 54px;
-}
-
-.ai-sheet__mark {
-  display: grid;
-  width: 74px;
-  height: 74px;
-  margin-bottom: 28px;
-  place-items: center;
-  border: 1px solid var(--color-accent);
-  color: var(--color-accent);
-  font-family: var(--font-family-title);
-  font-size: var(--font-size-xl);
-  transform: rotate(-3deg);
-}
-
-.ai-sheet h1 {
-  margin-bottom: 14px;
-  font-size: var(--font-size-xl);
-}
-
-.ai-sheet__copy {
-  max-width: 620px;
-  margin-bottom: 28px;
-  color: var(--color-disabled);
-  font-size: var(--font-size-md-sm);
-  line-height: 2;
-}
-
-.ai-sheet__rule {
-  height: 1px;
-  margin-bottom: 26px;
-  background: var(--color-border);
-}
-
-.ai-sheet dl {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin: 0 0 30px;
-}
-
-.ai-sheet dl > div {
-  padding-right: 16px;
-  border-right: 1px solid var(--color-border);
-}
-
-.ai-sheet dl > div:last-child {
-  border-right: 0;
-}
-
-.ai-sheet dt {
-  margin-bottom: 5px;
-  color: var(--color-primary);
-  font-family: var(--font-family-title);
-  font-size: var(--font-size-sm);
-}
-
-.ai-sheet dd {
-  margin: 0;
-  color: var(--color-disabled);
-  font-size: var(--font-size-xs);
-}
-
-.ai-sheet__status {
-  padding: 11px 14px;
-  border-left: 2px solid var(--color-accent);
-  background: var(--color-background-muted);
-  color: var(--color-disabled);
-  font-size: var(--font-size-xs);
-}
-
-.ai-sheet__actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.ai-sheet__actions a:hover {
-  text-decoration: none;
-}
-
-@media (max-width: 680px) {
-  .ai-sheet {
-    padding: 30px 22px;
-  }
-
-  .ai-sheet dl {
-    grid-template-columns: 1fr;
-  }
-
-  .ai-sheet dl > div {
-    padding: 0 0 14px;
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .ai-sheet__actions {
-    flex-direction: column;
-  }
-
-  .ai-sheet__actions a {
-    text-align: center;
-  }
-}
-</style>
+<style scoped src="./AiChat.css"></style>
