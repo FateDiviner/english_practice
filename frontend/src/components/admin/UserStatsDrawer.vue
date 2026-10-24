@@ -1,6 +1,7 @@
 <script setup>
 import AdminDrawer from '../AdminDrawer.vue'
 import { formatPercent } from '../../utils/format'
+import ProfileReport from './ProfileReport.vue'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -8,9 +9,12 @@ defineProps({
   stats: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  profile: { type: Object, default: null },
+  profileLoading: { type: Boolean, default: false },
+  profileError: { type: String, default: '' },
 })
 
-defineEmits(['close'])
+defineEmits(['close', 'load-profile'])
 </script>
 
 <template>
@@ -47,6 +51,30 @@ defineEmits(['close'])
         <dd>{{ stats?.wrong_words_count ?? 0 }} 词</dd>
       </div>
     </dl>
+
+    <div class="profile-action">
+      <button
+        class="secondary-button"
+        type="button"
+        :disabled="profileLoading"
+        @click="$emit('load-profile')"
+      >
+        {{ profileLoading ? '分析中…' : profile ? '重新生成学情画像' : '生成学情画像' }}
+      </button>
+      <p class="profile-action__help">
+        汇总数据、习惯、诊断、规划四位专家的分析，结果会缓存 6 小时。
+      </p>
+    </div>
+
+    <div v-if="profileLoading" class="skeleton-stack" aria-label="正在生成学情画像">
+      <span class="skeleton-line"></span>
+      <span class="skeleton-line"></span>
+      <span class="skeleton-line"></span>
+    </div>
+    <p v-else-if="profileError" class="inline-notice inline-notice--error" role="alert">
+      {{ profileError }}
+    </p>
+    <ProfileReport v-else-if="profile" :profile="profile" />
   </AdminDrawer>
 </template>
 
@@ -74,5 +102,18 @@ defineEmits(['close'])
   color: var(--color-primary);
   font-family: var(--font-family-title);
   font-size: var(--font-size-md);
+}
+
+.profile-action {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-action__help {
+  margin: 8px 0 0;
+  color: var(--color-disabled);
+  font-size: var(--font-size-xs);
+  line-height: 1.8;
 }
 </style>

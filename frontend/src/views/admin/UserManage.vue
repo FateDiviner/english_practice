@@ -2,6 +2,7 @@
 import { reactive, ref, watch } from 'vue'
 
 import {
+  getAdminUserProfile,
   getAdminUserStats,
   listAdminUsers,
   resetAdminUserPassword,
@@ -36,6 +37,9 @@ const statsTarget = ref(null)
 const stats = ref(null)
 const statsError = ref('')
 const isLoadingStats = ref(false)
+const profile = ref(null)
+const profileError = ref('')
+const isLoadingProfile = ref(false)
 
 const roleLabels = { user: '学习者', admin: '管理员' }
 const statusLabels = { active: '正常', disabled: '已禁用' }
@@ -123,6 +127,8 @@ async function openStats(user) {
   statsTarget.value = user
   stats.value = null
   statsError.value = ''
+  profile.value = null
+  profileError.value = ''
   statsDrawerOpen.value = true
   isLoadingStats.value = true
   try {
@@ -131,6 +137,20 @@ async function openStats(user) {
     statsError.value = getErrorMessage(error, '该用户的学习数据暂时无法读取。')
   } finally {
     isLoadingStats.value = false
+  }
+}
+
+async function loadProfile() {
+  if (!statsTarget.value || isLoadingProfile.value) return
+  profile.value = null
+  profileError.value = ''
+  isLoadingProfile.value = true
+  try {
+    profile.value = await getAdminUserProfile(statsTarget.value.id)
+  } catch (error) {
+    profileError.value = getErrorMessage(error, '学情画像暂时无法生成。')
+  } finally {
+    isLoadingProfile.value = false
   }
 }
 
@@ -286,6 +306,10 @@ watch(page, loadUsers, { immediate: true })
       :stats="stats"
       :loading="isLoadingStats"
       :error="statsError"
+      :profile="profile"
+      :profile-loading="isLoadingProfile"
+      :profile-error="profileError"
+      @load-profile="loadProfile"
       @close="statsDrawerOpen = false"
     />
   </div>
