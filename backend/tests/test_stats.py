@@ -181,6 +181,10 @@ async def test_other_user_records_are_not_included(client: AsyncClient) -> None:
 
 async def test_utc_late_night_groups_into_next_shanghai_day(client: AsyncClient) -> None:
     context = await build_context(client, "utc_boundary", ["alpha"])
+    shanghai_day = local_today()
+    utc_day_before = shanghai_day - timedelta(days=1)
+    # UTC 23:30 在 Asia/Shanghai 是次日 07:30。
+    answered_at = datetime.combine(utc_day_before, time(hour=23, minute=30))
     async with async_session_factory() as session:
         session.add(
             PracticeRecord(
@@ -188,20 +192,23 @@ async def test_utc_late_night_groups_into_next_shanghai_day(client: AsyncClient)
                 word_id=context["words"][0]["id"],
                 user_input="alpha",
                 is_correct=True,
-                answered_at=datetime(2026, 10, 22, 23, 30),
+                answered_at=answered_at,
             ),
         )
         await session.commit()
 
     daily = await client.get(
         "/api/v1/stats/daily",
-        params={"from": "2026-10-22", "to": "2026-10-23"},
+        params={
+            "from": utc_day_before.isoformat(),
+            "to": shanghai_day.isoformat(),
+        },
         headers=context["user"],
     )
     overview = await get_overview(client, context["user"])
 
     assert daily.status_code == 200
     assert daily.json()["data"]["items"] == [
-        {"date": "2026-10-23", "answered": 1, "correct": 1},
+        {"date": shanghai_day.isoformat(), "answered": 1, "correct": 1},
     ]
     assert overview["streak_days"] == 1
