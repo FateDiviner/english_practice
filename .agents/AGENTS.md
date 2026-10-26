@@ -60,6 +60,7 @@
 - 安装/同步依赖：`conda activate english_practice && cd backend && uv sync`
 - 新增依赖：`conda activate english_practice && cd backend && uv add <package>`
 - 启动：`conda activate english_practice && cd backend && uv run uvicorn app.main:app --reload --port 8000`
+- 备用启动（不需要 uv）：`conda activate english_practice && cd backend && python run.py`
 - 测试：`conda activate english_practice && cd backend && uv run pytest -q`
 - Lint：`uv run ruff check .`
 - 管理员 seed：`cd backend && conda run -n english_practice uv run python -m scripts.create_admin`
