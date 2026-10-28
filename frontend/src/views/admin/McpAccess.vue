@@ -219,7 +219,7 @@ onMounted(async () => {
       </form>
       <p class="mcp-hint">
         只读令牌只能调用查询工具；即使选择“可提交变更”，写操作也必须由管理员在
-        <RouterLink to="/admin/mcp-approvals">MCP 审批</RouterLink> 页面确认。
+        <RouterLink to="/admin/mcp/approvals">MCP 审批</RouterLink> 页面确认。
       </p>
     </section>
 

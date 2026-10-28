@@ -1,7 +1,7 @@
 # 管理端 MCP 客户端接入
 
 本服务把管理后台的只读查询与写操作申请暴露为 MCP 工具。写操作不会直接执行，必须由管理员在
-`/admin/mcp-approvals` 页面确认。
+`/admin/mcp/approvals` 页面确认。
 
 ## 1. 启用服务
 
@@ -24,7 +24,7 @@ MCP 端点为 `http://127.0.0.1:8000/mcp`，与 `/api/v1` 相互独立。
 
 ## 2. 创建客户端令牌
 
-打开管理端「A6 MCP 接入」页（`/admin/mcp-access`）：
+打开管理端「MCP 管理」页的「接入配置」标签（`/admin/mcp/access`）：
 
 1. 填写令牌名称，选择权限：只读，或可提交变更（写操作仍需人工审批）。
 2. 选择有效期（30 天 / 90 天 / 1 年 / 永不过期）。
@@ -70,7 +70,7 @@ claude mcp add --transport http english-practice-admin http://127.0.0.1:8000/mcp
 
 1. 只读查询：`admin_overview`、`list_users`、`list_wordbooks`、`list_words`。
 2. 提交变更：例如 `propose_word_create`，返回 `request_id` 与 `status=pending`。
-3. 管理员打开管理端 `/admin/mcp-approvals`，核对摘要和参数后点击「通过并执行」。
+3. 管理员打开管理端 `/admin/mcp/approvals`，核对摘要和参数后点击「通过并执行」。
 4. 客户端调用 `get_change_request` 获取执行结果；也可用 `list_change_requests` 查看队列。
 5. 审批前可用 `cancel_change_request` 由发起人撤回。
 
