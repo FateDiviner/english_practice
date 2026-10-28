@@ -1,32 +1,86 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
 
-import { getWordAudio } from '../api/audio'
+import { getWordAudio, getWordTtsAudio } from '../api/audio'
 
 const props = defineProps({
   wordId: { type: Number, required: true },
   audioUrl: { type: String, default: '' },
   label: { type: String, default: '朗读' },
+  ttsText: { type: String, default: '' },
+  accent: { type: String, default: 'us' },
   compact: { type: Boolean, default: false },
 })
 
 const status = ref('idle')
 let audioElement = null
+let objectUrl = ''
 
-async function playRemoteAudio(url) {
+function releaseAudio() {
   audioElement?.pause()
-  audioElement = new Audio(url)
-  await audioElement.play()
+  audioElement = null
+  if (objectUrl) {
+    URL.revokeObjectURL(objectUrl)
+    objectUrl = ''
+  }
 }
 
-function playTts() {
+async function playUrl(url) {
+  releaseAudio()
+  const element = new Audio(url)
+  audioElement = element
+  await element.play()
+}
+
+async function playSystemAudio() {
+  let blob
+  try {
+    blob = await getWordTtsAudio(props.wordId, props.accent)
+  } catch {
+    return false
+  }
+  if (!(blob instanceof Blob) || blob.size === 0) return false
+
+  releaseAudio()
+  objectUrl = URL.createObjectURL(blob)
+  try {
+    const element = new Audio(objectUrl)
+    audioElement = element
+    await element.play()
+  } catch {
+    return false
+  }
+  return true
+}
+
+function pickVoice(lang) {
+  if (!('speechSynthesis' in window)) return null
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices.length) return null
+  const sameLang = voices.filter((voice) => voice.lang === lang)
+  const samePrefix = voices.filter((voice) => voice.lang?.startsWith(lang.slice(0, 2)))
+  return (
+    sameLang.find((voice) => voice.localService) ||
+    sameLang[0] ||
+    samePrefix.find((voice) => voice.localService) ||
+    samePrefix[0] ||
+    null
+  )
+}
+
+function playTts(text) {
   if (!('speechSynthesis' in window)) throw new Error('当前浏览器不支持语音朗读')
-  window.speechSynthesis.cancel()
-  const isEnglishText = /^[A-Za-z][A-Za-z '-]*$/.test(props.label)
-  const utterance = new SpeechSynthesisUtterance(isEnglishText ? props.label : 'word')
-  utterance.lang = 'en-US'
+  const isEnglishText = /^[A-Za-z][A-Za-z '-]*$/.test(text || '')
+  const lang = props.accent === 'uk' ? 'en-GB' : 'en-US'
+  const utterance = new SpeechSynthesisUtterance(isEnglishText ? text : 'word')
+  utterance.lang = lang
   utterance.rate = 0.82
-  window.speechSynthesis.speak(utterance)
+  const voice = pickVoice(lang)
+  if (voice) utterance.voice = voice
+
+  const synth = window.speechSynthesis
+  if (synth.speaking || synth.pending) synth.cancel()
+  synth.speak(utterance)
 }
 
 async function play() {
@@ -34,11 +88,14 @@ async function play() {
   status.value = 'loading'
   try {
     if (props.audioUrl) {
-      await playRemoteAudio(props.audioUrl)
+      await playUrl(props.audioUrl)
     } else {
       const audio = await getWordAudio(props.wordId)
-      if (audio?.audio_url) await playRemoteAudio(audio.audio_url)
-      else playTts()
+      if (audio?.audio_url) {
+        await playUrl(audio.audio_url)
+      } else if (!(await playSystemAudio())) {
+        playTts(audio?.tts_text || props.ttsText)
+      }
     }
     status.value = 'playing'
   } catch {
@@ -51,7 +108,7 @@ async function play() {
 }
 
 onBeforeUnmount(() => {
-  audioElement?.pause()
+  releaseAudio()
   window.speechSynthesis?.cancel()
 })
 </script>

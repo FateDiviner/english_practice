@@ -12,6 +12,12 @@ const items = [
   { index: 'A2', label: '词书管理', to: '/admin/wordbooks', name: 'admin-wordbooks' },
   { index: 'A3', label: '导入单词', to: '/admin/import', name: 'admin-import' },
   { index: 'A4', label: '用户管理', to: '/admin/users', name: 'admin-users' },
+  {
+    index: 'A5',
+    label: 'MCP 审批',
+    to: '/admin/mcp-approvals',
+    name: 'admin-mcp-approvals',
+  },
 ]
 const activeName = computed(() => route.name)
 

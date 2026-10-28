@@ -6,8 +6,10 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from typing import Generic, TypeVar
 
+from langsmith import traceable
 from pydantic import BaseModel, ValidationError
 
+from app.core.tracing import annotate_trace
 from app.schemas.admin_profile import (
     AccuracyTrendPointOut,
     DataExpertOut,
@@ -71,6 +73,11 @@ def _extract_json_object(raw: str) -> dict | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _expert_trace_inputs(inputs: dict) -> dict:
+    fallback = inputs.get("fallback")
+    return {"draft": fallback.model_dump(mode="json") if fallback is not None else None}
+
+
 class BaseProfileExpert(Generic[OutputT]):
     key: str
     name: str
@@ -99,7 +106,13 @@ class BaseProfileExpert(Generic[OutputT]):
     def merge_refined(self, refined: OutputT, fallback: OutputT) -> OutputT:
         return refined.model_copy(update={"source": "llm"})
 
+    @traceable(
+        run_type="chain",
+        name="profile.expert",
+        process_inputs=_expert_trace_inputs,
+    )
     async def _refine(self, blackboard: Blackboard, fallback: OutputT) -> OutputT | None:
+        annotate_trace(expert=self.key, expert_name=self.name)
         payload = {
             "draft": fallback.model_dump(mode="json"),
             "blackboard": blackboard.prompt_payload(),
@@ -167,9 +180,7 @@ class DataExpert(BaseProfileExpert[DataExpertOut]):
             for week_start, (total, correct) in sorted(weekly.items())[-8:]
         ]
 
-        mastery_counts = Counter(
-            item.mastery_level for item in blackboard.word_progress
-        )
+        mastery_counts = Counter(item.mastery_level for item in blackboard.word_progress)
         total_words = len(blackboard.word_progress)
         distribution = [
             VocabularyBucketOut(
@@ -227,9 +238,7 @@ class DataExpert(BaseProfileExpert[DataExpertOut]):
         confidence = round(
             min(
                 0.95,
-                0.2
-                + min(total_answers / 100, 1) * 0.45
-                + min(total_words / 100, 1) * 0.2,
+                0.2 + min(total_answers / 100, 1) * 0.45 + min(total_words / 100, 1) * 0.2,
             ),
             2,
         )
@@ -284,9 +293,7 @@ class HabitExpert(BaseProfileExpert[HabitExpertOut]):
 
         today = date.today()
         current_week_start = today - timedelta(days=today.weekday())
-        week_starts = [
-            current_week_start - timedelta(weeks=offset) for offset in range(7, -1, -1)
-        ]
+        week_starts = [current_week_start - timedelta(weeks=offset) for offset in range(7, -1, -1)]
         weekly_frequency: list[WeeklyFrequencyOut] = []
         for week_start in week_starts:
             week_end = week_start + timedelta(days=7)
@@ -295,9 +302,7 @@ class HabitExpert(BaseProfileExpert[HabitExpertOut]):
                 WeeklyFrequencyOut(
                     week=week_start.strftime("%m-%d"),
                     sessions=sum(
-                        1
-                        for item in sessions
-                        if week_start <= item.started_at.date() < week_end
+                        1 for item in sessions if week_start <= item.started_at.date() < week_end
                     ),
                     active_days=len(week_dates),
                 )
@@ -360,9 +365,7 @@ class HabitExpert(BaseProfileExpert[HabitExpertOut]):
         confidence = round(
             min(
                 0.95,
-                0.2
-                + min(len(sessions) / 20, 1) * 0.55
-                + min(len(active_dates) / 14, 1) * 0.2,
+                0.2 + min(len(sessions) / 20, 1) * 0.55 + min(len(active_dates) / 14, 1) * 0.2,
             ),
             2,
         )
@@ -572,9 +575,7 @@ class DiagnosisExpert(BaseProfileExpert[DiagnosisExpertOut]):
         confidence = round(
             min(
                 0.95,
-                0.25
-                + min(len(wrong_words) / 10, 1) * 0.5
-                + min(total_wrong_hits / 20, 1) * 0.2,
+                0.25 + min(len(wrong_words) / 10, 1) * 0.5 + min(total_wrong_hits / 20, 1) * 0.2,
             ),
             2,
         )
@@ -709,10 +710,7 @@ class PlannerExpert(BaseProfileExpert[PlannerExpertOut]):
             recommendations.append("单次练习逐步延长到 15 分钟，增加有效回忆次数")
         recommendations.append(f"本周核心词：{'、'.join(focus[:5])}")
 
-        metric_scores = [
-            item.score
-            for item in [*data.metrics, *habit.metrics, *diagnosis.metrics]
-        ]
+        metric_scores = [item.score for item in [*data.metrics, *habit.metrics, *diagnosis.metrics]]
         readiness = sum(metric_scores) / len(metric_scores) if metric_scores else 0
         metrics = [
             _metric("plan_readiness", "规划就绪度", readiness, "planner"),

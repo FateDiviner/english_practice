@@ -1,20 +1,8 @@
-from collections.abc import AsyncIterator
 from uuid import uuid4
 
-import pytest
 from app.db.session import async_session_factory
-from app.models.practice_record import PracticeRecord
-from app.models.practice_session import PracticeSession
-from app.models.session_question import SessionQuestion
-from app.models.user import User
-from app.models.user_wordbook import UserWordbook
-from app.models.word import Word
-from app.models.word_progress import WordProgress
-from app.models.wordbook import Wordbook
-from app.models.wrong_word import WrongWord
 from httpx import AsyncClient
 from scripts.create_admin import seed_admin
-from sqlalchemy import delete, select
 
 ADMIN_PASSWORD = "AdminPass123!"
 USER_PASSWORD = "UserPass123!"
@@ -22,34 +10,6 @@ USER_PASSWORD = "UserPass123!"
 
 def make_name(label: str) -> str:
     return f"pytest_answer_{label}_{uuid4().hex[:10]}"
-
-
-async def clean_answer_data() -> None:
-    async with async_session_factory() as session:
-        user_ids = select(User.id).where(User.username.like("pytest_answer_%"))
-        wordbook_ids = select(Wordbook.id).where(Wordbook.name.like("pytest_answer_wb_%"))
-        session_ids = select(PracticeSession.id).where(PracticeSession.user_id.in_(user_ids))
-        await session.execute(delete(WrongWord).where(WrongWord.user_id.in_(user_ids)))
-        await session.execute(delete(WordProgress).where(WordProgress.user_id.in_(user_ids)))
-        await session.execute(delete(UserWordbook).where(UserWordbook.user_id.in_(user_ids)))
-        await session.execute(
-            delete(PracticeRecord).where(PracticeRecord.session_id.in_(session_ids))
-        )
-        await session.execute(
-            delete(SessionQuestion).where(SessionQuestion.session_id.in_(session_ids))
-        )
-        await session.execute(delete(PracticeSession).where(PracticeSession.user_id.in_(user_ids)))
-        await session.execute(delete(Word).where(Word.wordbook_id.in_(wordbook_ids)))
-        await session.execute(delete(Wordbook).where(Wordbook.name.like("pytest_answer_wb_%")))
-        await session.execute(delete(User).where(User.username.like("pytest_answer_%")))
-        await session.commit()
-
-
-@pytest.fixture(autouse=True)
-async def cleanup_answers() -> AsyncIterator[None]:
-    await clean_answer_data()
-    yield
-    await clean_answer_data()
 
 
 async def create_admin(client: AsyncClient, label: str) -> dict[str, str]:

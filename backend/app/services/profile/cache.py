@@ -27,9 +27,7 @@ class TTLProfileCache(Generic[T]):
         self._registry_lock = asyncio.Lock()
 
     def _purge_expired(self, now: datetime) -> None:
-        expired_keys = [
-            key for key, entry in self._entries.items() if entry.expires_at <= now
-        ]
+        expired_keys = [key for key, entry in self._entries.items() if entry.expires_at <= now]
         for key in expired_keys:
             self._entries.pop(key, None)
             lock = self._locks.get(key)

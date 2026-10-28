@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import {
   createAiSession,
@@ -105,7 +105,7 @@ async function sendMessage(text) {
   const conversationId = currentId.value
   errorMessage.value = ''
   messages.value.push({ role: 'user', content: text })
-  const reply = { role: 'assistant', content: '', meta: null, streaming: true }
+  const reply = reactive({ role: 'assistant', content: '', meta: null, streaming: true })
   messages.value.push(reply)
 
   isStreaming.value = true

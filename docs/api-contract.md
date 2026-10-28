@@ -40,6 +40,17 @@
 响应 data：{ user_wordbook_id, status }
 规则：已存在则返回既有记录
 
+## 发音
+### GET /words/{word_id}/audio
+响应 data：{ audio_url, tts_text?, fallback? }
+规则：优先返回词库自带音频；无音频时 tts_text 返回单词拼写，fallback=tts
+错误：404
+
+### GET /words/{word_id}/audio/file
+查询：accent=us|uk（默认 us）
+响应：audio/wav（系统语音合成的单词读音，服务端按单词与口音缓存）
+错误：404；503 系统语音不可用
+
 ## 练习（核心）
 ### POST /practice/sessions
 请求：{ wordbook_id?: int, mode: "normal"|"wrong_only", count?: int, strict_mode?: bool }
@@ -189,6 +200,55 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
 ### GET /admin/overview
 响应 data：{ total_users, active_users, total_wordbooks, total_words, today_sessions, today_answers }
 
+## 管理员 · MCP 审批
+以下接口均需要管理员令牌。MCP 客户端提交的增删改申请由这里审批。
+
+### GET /admin/mcp-changes
+查询：page, page_size, status（pending / approved / executed / rejected / failed / expired / cancelled）
+响应 items：
+{ id, action_type, target_type, target_id, payload, summary, reason, status,
+  requested_by, requested_by_username, approved_by, client_name, result,
+  error_message, created_at, expires_at, approved_at, executed_at }
+规则：请求时会先把已过期的 pending 申请标记为 expired；按 created_at 倒序返回。
+
+### GET /admin/mcp-changes/{id}
+响应 data：同上单条记录。
+错误：404 申请不存在
+
+### POST /admin/mcp-changes/{id}/approve
+响应 data：执行后的申请记录，`status=executed`，`result` 含执行结果（如 `word_id` / `wordbook_id` / `import_job_id`）。
+规则：
+- 仅 `pending` 且未过期可审批；使用条件更新防止并发重复执行。
+- 执行失败时申请记为 `failed`，仍返回对应业务错误。
+- `word.import` 审批通过后创建 `import_jobs` 记录并在后台解析文件。
+错误：404 不存在；409 已被处理或已过期；422 执行参数失效
+
+### POST /admin/mcp-changes/{id}/reject
+请求：{ reason?: str（≤500） }
+响应 data：`status=rejected` 的申请记录。
+错误：404；409 已被处理
+
+## MCP 服务（Streamable HTTP）
+- 端点：`POST /mcp`，独立于 `/api/v1`；需在 `.env` 设置 `MCP_ENABLED=true` 后启用。
+- 鉴权：`Authorization: Bearer <管理员 JWT>`；缺失或无效返回 401，非管理员返回 403。
+- 传输：stateless streamable HTTP，JSON 响应；待审批申请默认 30 分钟过期（`MCP_CONFIRM_TTL_MINUTES`）。
+
+只读工具：
+`admin_overview`、`list_users`、`get_user_stats`、`list_wordbooks`、`list_words`、`get_import_job`
+
+写提案工具（只创建待审批记录，不直接写业务数据）：
+`propose_wordbook_create/update/delete`、`propose_word_create/update/delete`、
+`propose_user_status`、`propose_profile_refresh`、`propose_import`、`preview_import`
+
+申请追踪工具：
+`get_change_request`、`list_change_requests`、`cancel_change_request`
+
+规则：
+- 写工具返回 `request_id` 与 `pending` 状态，管理端审批后才会执行。
+- 不开放重置用户密码。
+- 批量导入使用 base64 文件内容，解码后上限沿用 10MB，文件暂存在 `mcp_import_uploads`。
+- 每次工具调用、提案、审批与驳回写入 `mcp_audit_logs`；密码、令牌、文件内容脱敏。
+
 ## AI 对话会话
 所有接口需要登录，仅能访问当前用户自己的会话。
 
@@ -237,9 +297,9 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
 - event: error  data: { message: str }（生成失败时出现，已生成的部分仍会落库）
 
 说明：
-- Router 根据注册表动态生成技能说明，请模型为全部技能评分；取最高分技能分发。
+- Router 先做本地关键词匹配，意图明确时直接分发；未命中关键词时再调用模型为全部技能评分，取最高分技能分发。
 - 模型调用或 JSON 解析失败时，使用本地关键词规则，`fallback_used=true`。
 - `GENERAL` 是默认兜底技能；`TRANSLATION` 处理中英互译。
 - scene 取值 restaurant / interview / travel / campus，仅 ORAL_PRACTICE 意图使用。
-- 未配置 AI_PROVIDER/AI_API_KEY 时返回 Mock 假数据流。
+- 未配置 AI_PROVIDER/AI_PROVIDER_KEY 时返回 Mock 假数据流。
 - 未登录返回 401；会话不存在或不属于当前用户返回 404。

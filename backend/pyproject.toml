@@ -9,6 +9,8 @@ dependencies = [
     "bcrypt>=5.0.0",
     "fastapi",
     "httpx>=0.28.1",
+    "langsmith>=0.5.0",
+    "mcp>=2.3,<3",
     "openpyxl>=3.1.5",
     "pydantic",
     "pydantic-settings",

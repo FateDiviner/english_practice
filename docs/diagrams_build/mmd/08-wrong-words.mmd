@@ -1,0 +1,53 @@
+flowchart TB
+  subgraph FE["前端 · 错词本页面 WrongWords.vue"]
+    A1["watch(page) :63<br/>loadWrongWords() :22"]:::fe
+    A2["changeFilter(nextResolved) :41<br/>待攻克 / 已解决"]:::fe
+    A3["confirmRemove(wordId) :47<br/>removingId 防重复 :48"]:::fe
+    A4["AudioButton :155<br/>发音（见 F11）"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/wrongWords.js<br/>listWrongWords() :3"]:::api
+    B2["api/wrongWords.js<br/>removeWrongWord() :9"]:::api
+  end
+
+  subgraph RT["后端 · 路由 wrong_words.py"]
+    C1["list_wrong_words_endpoint() :25"]:::be
+    C2["remove_wrong_word_endpoint() :66"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 wrong_word.py"]
+    S1["list_wrong_words() :9<br/>分页 + last_wrong_at desc :25"]:::svc
+    S2["remove_wrong_word() :38<br/>不存在 404 :50-51"]:::svc
+  end
+
+  subgraph GEN["错词自动生成 · practice_answer.py"]
+    G1["错误分支 :160-188"]:::svc
+    G2["wrong_count += 1<br/>consecutive_correct = 0<br/>mastery_level = 1"]:::svc
+    G3{{"错词记录已存在？"}}:::dec
+    G4["新建 WrongWord<br/>wrong_count=1 :174-183"]:::svc
+    G5["累加 wrong_count<br/>resolved=False<br/>resolved_at=None :184-188"]:::svc
+    G6["连续答对 2 次<br/>resolved=True :146-158"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("wrong_words<br/>uq(user_id, word_id)<br/>wrong_count / last_wrong_at / resolved")]:::db
+    D2[("words")]:::db
+  end
+
+  A1 --> B1 -->|"GET /wrong-words?resolved=false"| C1 --> S1 --> D1
+  S1 --> D2
+  A2 --> A1
+  A3 --> B2 -->|"DELETE /wrong-words/{word_id}"| C2 --> S2 --> D1
+  G1 --> G2 --> G3
+  G3 -->|否| G4 --> D1
+  G3 -->|是| G5 --> D1
+  G6 --> D1
+  D1 --> S1
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00

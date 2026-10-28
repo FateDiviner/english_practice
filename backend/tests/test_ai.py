@@ -76,9 +76,7 @@ def _sse_events(body: str) -> list[tuple[str, dict]]:
             (line.removeprefix("event: ") for line in lines if line.startswith("event: ")),
             "message",
         )
-        data = "\n".join(
-            line.removeprefix("data: ") for line in lines if line.startswith("data: ")
-        )
+        data = "\n".join(line.removeprefix("data: ") for line in lines if line.startswith("data: "))
         events.append((event, json.loads(data)))
     return events
 

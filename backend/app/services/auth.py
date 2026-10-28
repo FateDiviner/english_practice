@@ -13,11 +13,6 @@ from app.core.security import hash_password, verify_password
 from app.models.user import User
 
 
-async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
-    """按主键查询用户。"""
-    return await session.get(User, user_id)
-
-
 async def get_user_by_account(session: AsyncSession, account: str) -> User | None:
     """按 username 优先、email 其次查询登录账号。"""
     user = await session.scalar(select(User).where(User.username == account))

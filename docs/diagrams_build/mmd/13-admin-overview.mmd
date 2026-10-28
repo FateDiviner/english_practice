@@ -1,0 +1,57 @@
+flowchart TB
+  subgraph FE["前端 · 管理端概览 Overview.vue"]
+    A1["onMounted(loadOverview) :62"]:::fe
+    A2["loadOverview() :50"]:::fe
+    A3["metrics computed :11-48<br/>六项平台指标"]:::fe
+    A4["指标卡渲染 :91-100"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/admin.js<br/>getAdminOverview() :37"]:::api
+  end
+
+  subgraph RT["后端 · 路由 admin_stats.py"]
+    C1["路由级 Depends(require_admin) :13-17"]:::be
+    C2["get_admin_overview_endpoint() :20"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 admin_stats.py"]
+    S1["get_admin_overview() :19"]:::svc
+    S2["APP_TIMEZONE 计算今日/近 7 天边界 :21-28"]:::svc
+    S3["total_users :30"]:::svc
+    S4["active_users<br/>练习会话 JOIN 答题去重 :31-40"]:::svc
+    S5["total_wordbooks :41"]:::svc
+    S6["total_words :42"]:::svc
+    S7["today_sessions :43-50"]:::svc
+    S8["today_answers :51-58"]:::svc
+    S9["一次 execute + result.one() :60-70"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("users")]:::db
+    D2[("wordbooks / words")]:::db
+    D3[("practice_sessions")]:::db
+    D4[("practice_records")]:::db
+  end
+
+  A1 --> A2 --> B1 -->|"GET /admin/overview"| C1 --> C2 --> S1
+  S1 --> S2 --> S3 --> D1
+  S1 --> S4 --> D3
+  S1 --> S4 --> D4
+  S1 --> S5 --> D2
+  S1 --> S6 --> D2
+  S1 --> S7 --> D3
+  S1 --> S8 --> D4
+  S3 --> S9
+  S4 --> S9
+  S5 --> S9
+  S6 --> S9
+  S7 --> S9
+  S8 --> S9
+  S9 --> C2 --> A2 --> A3 --> A4
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127

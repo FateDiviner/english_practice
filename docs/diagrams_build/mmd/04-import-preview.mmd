@@ -1,0 +1,67 @@
+flowchart TB
+  subgraph FE["前端 · 导入向导 ImportWizard.vue"]
+    A1["onMounted → loadWordbooks() :51"]:::fe
+    A2["handleFile(event) :88<br/>记录 selectedFile"]:::fe
+    A3["loadPreviewFromServer() :65<br/>清空旧预览 → 请求预览"]:::fe
+    A4["suggestMapping(headers)<br/>utils/delimited.js:13"]:::fe
+    A5["validateImportRows()<br/>utils/delimited.js:24"]:::fe
+    A6["canContinue computed :37<br/>样本校验不通过则禁用"]:::fe
+    A7["confirmImport() :111"]:::fe
+  end
+
+  subgraph API["前端 API 层"]
+    B1["api/admin.js<br/>previewAdminImport() :68"]:::api
+    B2["api/admin.js<br/>importAdminWords() :74<br/>FormData: file + mapping JSON"]:::api
+  end
+
+  subgraph RT["后端 · 路由 api/v1/admin_import.py"]
+    C1["preview_import_endpoint() :62"]:::be
+    C2["create_import_endpoint() :88<br/>HTTP 202"]:::be
+    C3["_read_upload() :40<br/>文件名清洗 + 大小校验"]:::be
+    C4["_parse_mapping() :50<br/>Pydantic 校验 mapping"]:::be
+    C5["_require_wordbook() :57<br/>不存在 404"]:::be
+  end
+
+  subgraph SVC["后端 · 服务层"]
+    S1["services/import_file.py<br/>parse_import_file() :71"]:::svc
+    S2["_parse_delimited() :152<br/>CSV / TSV / TXT<br/>UTF-8-sig / GB18030"]:::svc
+    S3["_parse_xlsx() :173<br/>openpyxl 只读"]:::svc
+    S4["_build_parsed_file() :128<br/>去空行 · 表头 · 列≤100 · 行≤20000"]:::svc
+    S5["services/import_job.py<br/>create_import_job() :8"]:::svc
+    S6["import_job.status = pending"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("wordbooks")]:::db
+    D2[("import_jobs<br/>pending / processing / done / failed")]:::db
+  end
+
+  E1{{"文件扩展名/大小合法？"}}:::dec
+  E2["400 参数错误"]:::err
+  E3["返回 headers + rows[:20] + total_rows"]:::ok
+  E4["background_tasks.add_task()<br/>admin_import.py:105"]:::ok
+
+  A1 --> B1
+  A2 --> A3 --> B1 -->|"POST /wordbooks/{id}/import/preview"| C1
+  C1 --> C3 --> E1
+  E1 -->|否| E2
+  E1 -->|是| C5 --> D1
+  C5 --> S1 --> S2
+  S1 --> S3
+  S2 --> S4
+  S3 --> S4
+  S4 --> E3
+  E3 --> A4 --> A5 --> A6
+  A6 -->|通过| A7 --> B2 -->|"POST /wordbooks/{id}/import"| C2
+  C2 --> C4 --> C3 --> S5 --> D2
+  S5 --> S6
+  C2 --> E4
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

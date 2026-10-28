@@ -53,8 +53,7 @@ class BlackboardController:
         eligible = [
             source
             for source in knowledge_sources
-            if source.key not in completed
-            and set(source.depends_on).issubset(completed)
+            if source.key not in completed and set(source.depends_on).issubset(completed)
         ]
         if not eligible:
             return None

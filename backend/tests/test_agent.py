@@ -2,11 +2,18 @@
 
 import json
 
+from app.core.config import get_settings
 from app.db.session import async_session_factory
 from app.models.ai_conversation import AiConversation
 from app.models.ai_message import AiMessage
 from app.models.user import User
-from app.services.agent.client import ChatMessage, MockLLMClient
+from app.services.agent.client import (
+    ChatMessage,
+    MockLLMClient,
+    OpenAICompatibleClient,
+    get_llm_client,
+    is_mock_provider,
+)
 from app.services.agent.intent import Intent
 from app.services.agent.router import IntentRouter, parse_intent
 from app.services.agent.service import AgentService
@@ -46,6 +53,27 @@ async def test_mock_client_streams_full_text() -> None:
     chunks = [chunk async for chunk in client.stream(messages)]
     assert len(chunks) > 1
     assert "abandon" in "".join(chunks)
+
+
+def test_get_llm_client_accepts_any_non_mock_provider(monkeypatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "AI_PROVIDER", "Mimo")
+    monkeypatch.setattr(settings, "AI_PROVIDER_URL", "https://example.com/v1")
+    monkeypatch.setattr(settings, "AI_PROVIDER_KEY", "sk-test")
+    get_llm_client.cache_clear()
+
+    assert not is_mock_provider()
+    assert isinstance(get_llm_client(), OpenAICompatibleClient)
+
+
+def test_get_llm_client_falls_back_to_mock_without_key(monkeypatch) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "AI_PROVIDER", "Mimo")
+    monkeypatch.setattr(settings, "AI_PROVIDER_KEY", "")
+    get_llm_client.cache_clear()
+
+    assert is_mock_provider()
+    assert isinstance(get_llm_client(), MockLLMClient)
 
 
 async def test_parse_intent_accepts_enum_text() -> None:
@@ -90,13 +118,33 @@ async def test_router_classify_translation_and_general() -> None:
     assert await router.classify("今天午饭吃什么比较好") == Intent.GENERAL
 
 
+async def test_router_classify_english_word_questions() -> None:
+    router, _ = _build_router(MockLLMClient())
+    assert await router.classify("What does the word abandon mean?") == Intent.EXPLAIN_WORD
+    assert await router.classify("Explain the word resilient in one line.") == Intent.EXPLAIN_WORD
+
+
+async def test_router_skips_llm_for_keyword_hits() -> None:
+    class ExplodingLLM:
+        async def stream(self, _messages):
+            raise AssertionError("关键词命中时不应调用模型路由")
+            yield  # pragma: no cover
+
+    router, _ = _build_router(ExplodingLLM())
+    decision = await router.decide("把这句话翻译成英文：今天天气很好")
+
+    assert decision.intent == Intent.TRANSLATION
+    assert decision.fallback_used is False
+    assert "跳过模型路由" in (decision.reason or "")
+
+
 async def test_router_returns_confidence_and_ranked_candidates() -> None:
     router, _ = _build_router(MockLLMClient())
     decision = await router.decide("把这句话翻译成英文：今天天气很好")
 
     assert decision.intent == Intent.TRANSLATION
     assert decision.skill == "translation"
-    assert decision.confidence == 95
+    assert decision.confidence == 90
     assert decision.fallback_used is False
     assert len(decision.candidates) == 5
     assert decision.candidates[0].intent == Intent.TRANSLATION
@@ -126,7 +174,7 @@ async def test_service_stream_chat_emits_meta_delta_done() -> None:
     meta = events[0][1]
     assert meta["intent"] == Intent.EXPLAIN_WORD.value
     assert meta["skill"] == "explain_word"
-    assert meta["confidence"] == 95
+    assert meta["confidence"] == 90
     assert meta["fallback_used"] is False
     assert len(meta["candidates"]) == 5
     content = "".join(payload["content"] for event, payload in events if event == "delta")
@@ -183,7 +231,7 @@ async def test_agent_chat_streams_sse(client) -> None:
         meta = json.loads(meta_line.removeprefix("data: "))
         assert meta["intent"] == Intent.TRANSLATION.value
         assert meta["skill"] == "translation"
-        assert meta["confidence"] == 95
+        assert meta["confidence"] == 90
         assert isinstance(meta["conversation_id"], int)
     finally:
         await _cleanup_user(user_id)

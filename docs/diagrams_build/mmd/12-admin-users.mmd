@@ -1,0 +1,77 @@
+flowchart TB
+  subgraph FE["前端 · 用户管理 UserManage.vue"]
+    A1["watch(page) :132<br/>loadUsers() :43"]:::fe
+    A2["applyFilters() :62<br/>关键词搜索 → 回第 1 页"]:::fe
+    A3["applyStatusFilter() :68<br/>active / disabled"]:::fe
+    A4["toggleStatus(user) :73<br/>前端先拦截禁用自己 :74-77"]:::fe
+    A5["openReset(user) :92"]:::fe
+    A6["ResetPasswordDrawer.vue<br/>submit() :30"]:::fe
+    A7["openStats(user) :101<br/>getAdminUserStats() :110"]:::fe
+    A8["handleResetSubmitted() :97"]:::fe
+  end
+
+  subgraph API["前端 API admin.js"]
+    B1["listAdminUsers() :41"]:::api
+    B2["updateAdminUserStatus() :52"]:::api
+    B3["resetAdminUserPassword() :56"]:::api
+    B4["getAdminUserStats() :60"]:::api
+  end
+
+  subgraph RT["后端 · 路由 admin_users.py"]
+    C0["路由级 Depends(require_admin) :29"]:::be
+    C1["list_users_endpoint() :33"]:::be
+    C2["update_user_status_endpoint() :72"]:::be
+    C3["reset_password_endpoint() :88"]:::be
+    C4["get_user_stats_endpoint() :104"]:::be
+    C5["core/deps.py require_admin() :46"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 admin_user.py"]
+    S1["list_users() :19<br/>keyword LIKE username/email :28-30<br/>status 精确 :31-32<br/>练习数聚合 :34-42<br/>offset/limit + total :43-51"]:::svc
+    S2["_require_user() :55<br/>不存在 404"]:::svc
+    S3["update_user_status() :62<br/>不能禁用自己 :69-70"]:::svc
+    S4["reset_password() :78<br/>长度校验 :85<br/>hash_password() :89"]:::svc
+    S5["get_user_stats() :95<br/>复用 get_overview() :98"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("users<br/>role / status")]:::db
+    D2[("practice_sessions / practice_records")]:::db
+  end
+
+  V1{{"目标是自己且要禁用？"}}:::dec
+  V2{{"身份校验通过？"}}:::dec
+  E1["400 不能禁用自己"]:::err
+  E2["403 / 40301 无管理员权限"]:::err
+  E3["404 用户不存在"]:::err
+  OK["刷新列表 / 提示成功"]:::ok
+
+  A1 --> B1 -->|"GET /admin/users"| C1
+  C1 --> C0 --> C5
+  C1 --> S1 --> D1
+  S1 --> D2
+  A2 --> A1
+  A3 --> A1
+  A4 --> B2 -->|"PATCH /admin/users/{id}/status"| C2
+  C2 --> V1
+  V1 -->|是| E1
+  V1 -->|否| S3 --> D1
+  A5 --> A6 --> B3 -->|"POST /admin/users/{id}/reset-password"| C3 --> S4 --> D1
+  A6 --> A8
+  A7 --> B4 -->|"GET /admin/users/{id}/stats"| C4 --> S5
+  S5 --> D2
+  S3 --> V2
+  V2 -->|否| E2
+  V2 -->|是| OK
+  C2 --> E3
+  C4 --> E3
+  C3 --> E3
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

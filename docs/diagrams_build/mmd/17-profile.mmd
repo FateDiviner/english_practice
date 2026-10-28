@@ -1,0 +1,70 @@
+flowchart TB
+  subgraph FE["前端 · 管理端画像入口"]
+    A1["UserStatsDrawer.vue<br/>按钮 emit('load-profile') :55"]:::fe
+    A2["UserManage.vue<br/>loadProfile() :118"]:::fe
+    A3["api/admin.js<br/>getAdminUserProfile() :64"]:::api
+    A4["ProfileReport.vue<br/>摘要/置信度/缓存 :33-45"]:::fe
+    A5["ProfileAgentSection.vue<br/>专家卡片 :33-35"]:::fe
+  end
+
+  subgraph RT["后端 · 路由"]
+    B1["admin_profile.py<br/>Depends(require_admin) :12-16"]:::be
+    B2["get_user_profile_endpoint() :20<br/>orchestrator.analyze() :26"]:::be
+  end
+
+  subgraph ORC["编排 · service.py"]
+    C1["analyze() :159"]:::svc
+    C2["collect_blackboard() :160<br/>blackboard.py:169"]:::svc
+    C3["fingerprint() :161<br/>blackboard.py:130"]:::svc
+    C4["get_or_create() :175<br/>cache.py:37"]:::svc
+    C5{{"缓存命中？"}}:::dec
+    C6["run_experts() :163"]:::svc
+    C7["assemble_profile_report() :171<br/>:61 · _level() :49"]:::svc
+    C8["model_copy 回填缓存状态<br/>:176-184"]:::svc
+  end
+
+  subgraph CTL["控制器 · controller.py"]
+    D1["solve() :85 · rounds=4 :91"]:::svc
+    D2["select_next_ks() :45<br/>匹配 0.5 + 优先级 0.3 + 0.2"]:::svc
+    D3["evaluate_solution() :72<br/>缺失源 + 平均置信度"]:::svc
+    D4["Blackboard.write() :94<br/>write_artifact() :106"]:::svc
+  end
+
+  subgraph AG["四位专家 · agents.py（按优先级调度）"]
+    E1["DataExpert :144<br/>priority 40"]:::svc
+    E2["HabitExpert :273<br/>priority 30"]:::svc
+    E3x["DiagnosisExpert :447<br/>priority 20"]:::svc
+    E4["PlannerExpert :622<br/>priority 10 · 依赖前三者 :628"]:::svc
+    E5["BaseProfileExpert.analyze() :93<br/>build_fallback() → _refine() :114"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1x[("users")]:::db
+    D2x[("word_progress + words")]:::db
+    D3x[("wrong_words + words")]:::db
+    D4x[("practice_sessions")]:::db
+    D5x[("进程内 TTL 缓存<br/>TTL=21600s")]:::db
+  end
+
+  A1 --> A2 --> A3 -->|"POST /admin/users/{id}/profile"| B1 --> B2 --> C1
+  C1 --> C2
+  C2 --> D1x
+  C2 --> D2x
+  C2 --> D3x
+  C2 --> D4x
+  C1 --> C3 --> C4 --> C5
+  C5 -->|是| C8
+  C5 -->|否| C6 --> D1 --> D2 --> E1
+  E1 --> E2 --> E3x --> E4
+  E4 --> E5 --> D4 --> D3 --> D2
+  D1 --> C7
+  C7 --> C8 --> B2
+  B2 --> A2 --> A4 --> A5
+  C4 --> D5x
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00

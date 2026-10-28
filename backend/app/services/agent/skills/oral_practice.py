@@ -29,8 +29,3 @@ def resolve_scene(scene: str | None) -> str:
     if not scene:
         return ORAL_SCENES[DEFAULT_SCENE]
     return ORAL_SCENES.get(scene, ORAL_SCENES[DEFAULT_SCENE])
-
-
-def list_scenes() -> list[str]:
-    """列出可选场景标识，供前端选择。"""
-    return list(ORAL_SCENES)

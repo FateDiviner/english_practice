@@ -1,0 +1,78 @@
+flowchart TB
+  subgraph FE["前端 · 词书管理页（admin）"]
+    A1["WordbookManage.vue<br/>watch(page) :128 → loadWordbooks() :54"]:::fe
+    A2["WordbookManage.vue<br/>openCreate() :37 / openEdit() :42"]:::fe
+    A3["WordbookManage.vue<br/>saveWordbook() :68"]:::fe
+    A4["WordbookManage.vue<br/>togglePublish() :95"]:::fe
+    A5["WordbookManage.vue<br/>confirmDelete() :107"]:::fe
+    A6["PagePagination.vue<br/>goTo() :13 → emit update:page"]:::fe
+  end
+
+  subgraph API["前端 API 层"]
+    B1["api/admin.js<br/>listAdminWordbooks() :3"]:::api
+    B2["api/admin.js<br/>createAdminWordbook() :7"]:::api
+    B3["api/admin.js<br/>updateAdminWordbook() :11"]:::api
+    B4["api/admin.js<br/>deleteAdminWordbook() :15"]:::api
+  end
+
+  subgraph BE["后端 · 路由层 api/v1"]
+    C0["路由级依赖<br/>Depends(require_admin) :28"]:::be
+    C1["admin_wordbooks.py<br/>list_wordbooks_endpoint() :78"]:::be
+    C2["admin_wordbooks.py<br/>create_wordbook_endpoint() :32"]:::be
+    C3["admin_wordbooks.py<br/>update_wordbook_endpoint() :51"]:::be
+    C4["admin_wordbooks.py<br/>delete_wordbook_endpoint() :66"]:::be
+  end
+
+  subgraph SVC["后端 · 服务层 services/wordbook.py"]
+    S1["list_wordbooks() :43<br/>标量子查询统计 word_count"]:::svc
+    S2["create_wordbook() :19<br/>默认 status=draft"]:::svc
+    S3["update_wordbook() :65<br/>404 / 422 / 逐字段 setattr"]:::svc
+    S4["delete_wordbook() :89"]:::svc
+    S5["get_published_wordbook() :112<br/>仅 published 用户可见"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("wordbooks<br/>status: draft/published/archived")]:::db
+    D2[("words<br/>uq(wordbook_id, spelling)")]:::db
+  end
+
+  V1{{"保存：form.id 存在？"}}:::dec
+  V2{{"name 为空？"}}:::dec
+  V3{{"词书下还有单词？"}}:::dec
+  E1["PUT /api/v1/admin/wordbooks/{id}"]:::api
+  E2["POST /api/v1/admin/wordbooks"]:::api
+  E3["409 / 40901<br/>请先清空词书内单词"]:::err
+  E4["404 词书不存在"]:::err
+  E5["前端提示：还有单词，先清空<br/>WordbookManage.vue:117-118"]:::err
+  OK["关闭抽屉 → 重新 loadWordbooks()"]:::ok
+
+  A6 --> A1
+  A1 --> B1 -->|"GET /api/v1/admin/wordbooks"| C0 --> C1 --> S1 --> D1
+  A2 --> A3
+  A3 --> V2
+  V2 -->|是| ERR["内联校验提示"]:::err
+  V2 -->|否| V1
+  V1 -->|是| B3 --> E1 --> C3 --> S3 --> D1
+  V1 -->|否| B2 --> E2 --> C2 --> S2 --> D1
+  A4 --> B3
+  A5 --> B4 -->|"DELETE /api/v1/admin/wordbooks/{id}"| C4 --> S4
+  S4 --> D1
+  S4 --> V3
+  V3 -->|是| E3 --> E5
+  V3 -->|否| D2
+  S4 --> E4
+  C1 --> D1
+  C1 --> D2
+  S1 --> D1
+  S3 --> OK
+  S2 --> OK
+  S5 --> D1
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

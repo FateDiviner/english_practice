@@ -19,10 +19,6 @@ ADMIN_PASSWORD = "AdminPass123!"
 USER_PASSWORD = "UserPass123!"
 
 
-def make_prefix(label: str) -> str:
-    return f"pytest_practice_{label}_{uuid4().hex[:10]}"
-
-
 async def clean_practice_data() -> None:
     async with async_session_factory() as session:
         user_ids = select(User.id).where(User.username.like("pytest_practice_%"))

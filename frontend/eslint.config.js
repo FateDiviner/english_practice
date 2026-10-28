@@ -14,6 +14,7 @@ export default [
       globals: {
         AbortController: 'readonly',
         Audio: 'readonly',
+        Blob: 'readonly',
         DOMException: 'readonly',
         document: 'readonly',
         fetch: 'readonly',
@@ -21,6 +22,7 @@ export default [
         ReadableStream: 'readonly',
         SpeechSynthesisUtterance: 'readonly',
         TextDecoder: 'readonly',
+        URL: 'readonly',
         window: 'readonly',
       },
     },

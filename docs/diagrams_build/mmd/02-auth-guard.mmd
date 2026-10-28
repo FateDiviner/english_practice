@@ -1,0 +1,72 @@
+flowchart TB
+  subgraph FE["前端 · 路由守卫与状态恢复"]
+    A1["router/index.js<br/>beforeEach() :105"]:::fe
+    A2{{"authStore.initialized？"}}:::dec
+    A3["stores/auth.js<br/>fetchMe() :55"]:::fe
+    A4["api/auth.js<br/>fetchMe() :11"]:::api
+    A5{{"路由 meta.requiresAuth？"}}:::dec
+    A6{{"已登录？"}}:::dec
+    A7["跳转 /login?redirect=&lt;fullPath&gt;<br/>:115-117"]:::err
+    A8{{"meta.requiresAdmin？"}}:::dec
+    A9{{"isAdmin（role=admin）？"}}:::dec
+    A10["跳转 home<br/>:118"]:::err
+    A11{{"meta.guestOnly？"}}:::dec
+    A12["跳转 home<br/>:119"]:::err
+    A13["放行 next()"]:::ok
+  end
+
+  subgraph BE["后端 · 鉴权依赖"]
+    C1["api/v1/auth.py<br/>me() :57"]:::be
+    C2["core/deps.py<br/>get_current_user() :19"]:::be
+    C3["HTTPBearer(auto_error=False)<br/>deps.py:16"]:::be
+    C4["core/security.py<br/>decode_access_token() :46"]:::be
+    C5["session.get(User, id)<br/>deps.py:36"]:::be
+    C6{{"凭据/Token 有效？"}}:::dec
+    C7["401 / 40101<br/>未登录或登录已过期"]:::err
+    C8{{"status = active？"}}:::dec
+    C9["401 / 40101<br/>账号已被禁用"]:::err
+    C10["core/deps.py<br/>require_admin() :46"]:::be
+    C11{{"role = admin？"}}:::dec
+    C12["403 / 40301<br/>无管理员权限"]:::err
+  end
+
+  subgraph REQ["前端 · 统一错误处理"]
+    B1["api/request.js<br/>normalizeError() :38"]:::api
+    B2["handleUnauthenticated() :29<br/>清会话 + location.replace('/login')"]:::err
+  end
+
+  A1 --> A2
+  A2 -->|否| A3 --> A4 -->|"GET /api/v1/auth/me"| C1
+  A2 -->|是| A5
+  A5 -->|否| A11
+  A5 -->|是| A6
+  A6 -->|否| A7
+  A6 -->|是| A8
+  A8 -->|否| A13
+  A8 -->|是| A9
+  A9 -->|否| A10
+  A9 -->|是| A13
+  A11 -->|是且已登录| A12
+  A11 -->|否| A13
+
+  C1 --> C2 --> C3 --> C4 --> C6
+  C6 -->|否| C7
+  C6 -->|是| C5 --> C8
+  C8 -->|否| C9
+  C8 -->|是| C1
+  C10 --> C2
+  C10 --> C11
+  C11 -->|否| C12
+  C11 -->|是| OK["进入 endpoint"]:::ok
+
+  C7 --> B1
+  C9 --> B1
+  C12 --> B1
+  B1 --> B2
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

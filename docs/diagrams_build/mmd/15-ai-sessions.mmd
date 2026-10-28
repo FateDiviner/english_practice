@@ -1,0 +1,66 @@
+flowchart TB
+  subgraph FE["前端 · AiChat.vue 会话管理"]
+    A1["onMounted :165 → loadSessions() :32"]:::fe
+    A2["selectConversation(id) :47"]:::fe
+    A3["startNewConversation() :75"]:::fe
+    A4["removeConversation(id) :149"]:::fe
+    A5["ConversationSidebar.vue<br/>emit select/create/delete :14"]:::fe
+    A6["ChatComposer.vue<br/>scenes :15-21 · emit update:scene"]:::fe
+  end
+
+  subgraph API["前端 API ai.js"]
+    B1["listAiSessions() :8"]:::api
+    B2["createAiSession() :12"]:::api
+    B3["getAiSession() :16"]:::api
+    B4["deleteAiSession() :20"]:::api
+  end
+
+  subgraph RT["后端 · 路由 ai.py（路由级鉴权 :26-30）"]
+    C1["list_sessions_endpoint() :33"]:::be
+    C2["create_session_endpoint() :65<br/>201"]:::be
+    C3["get_session_endpoint() :84"]:::be
+    C4["delete_session_endpoint() :113"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 ai_conversation.py"]
+    S1["list_conversations() :48<br/>user_id 过滤 :62<br/>updated_at desc :63"]:::svc
+    S2["create_conversation() :76"]:::svc
+    S3["get_conversation_detail() :92<br/>消息按 id 正序 :102"]:::svc
+    S4["delete_conversation() :108"]:::svc
+    S5["get_owned_conversation() :31<br/>越权/不存在 → 404 :43-44"]:::svc
+    S6["build_conversation_title() :21<br/>首条消息前 30 字"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("ai_conversations<br/>user_id / title / scene")]:::db
+    D2[("ai_messages<br/>FK CASCADE")]:::db
+  end
+
+  V1{{"会话属于当前用户？"}}:::dec
+  E1["404 会话不存在"]:::err
+  OK["返回列表 / 详情 / 删除成功"]:::ok
+
+  A5 -->|select| A2 --> B3 -->|"GET /ai/sessions/{id}"| C3 --> S3 --> S5
+  S5 --> V1
+  V1 -->|否| E1
+  V1 -->|是| D1
+  S3 --> D2
+  A5 -->|create| A3 --> B2 -->|"POST /ai/sessions"| C2 --> S2
+  S2 --> S6 --> D1
+  A5 -->|delete| A4 --> B4 -->|"DELETE /ai/sessions/{id}"| C4 --> S4 --> S5
+  S4 --> D1
+  D2 -->|级联删除| D2
+  A1 --> B1 -->|"GET /ai/sessions"| C1 --> S1 --> D1
+  S1 --> OK
+  A6 --> A3
+  E1 --> A2
+  OK --> A2
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

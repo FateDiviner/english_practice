@@ -1,0 +1,83 @@
+flowchart TB
+  subgraph FE["前端 · 练习页与设置面板"]
+    A1["PracticeSetup.vue<br/>start() :28 → emit('start')"]:::fe
+    A2["Practice.vue<br/>startPractice(config) :55<br/>phase==='loading' 防重入 :56"]:::fe
+    A3["Practice.vue<br/>applyConfig() :48"]:::fe
+    A4["Practice.vue<br/>startFromQuery() :69<br/>?mode=wrong_only&amp;wordbook_id="]:::fe
+    A5["Practice.vue<br/>onMounted() :133 → loadWordbooks() :36"]:::fe
+    A6["Practice.vue<br/>QuestionCard 渲染 :170-195"]:::fe
+  end
+
+  subgraph ST["前端 · Pinia 状态 stores/practice.js"]
+    S1["reset() :31"]:::fe
+    S2["startSession() :44<br/>phase='loading' :50"]:::fe
+    S3["写入 sessionId/total/questions/notice<br/>phase='answering' :58-64"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/practice.js<br/>createPracticeSession() :3"]:::api
+  end
+
+  subgraph BE["后端 · 路由 api/v1/practice.py"]
+    C1["create_session_endpoint() :32"]:::be
+    C2["组装 QuestionOut<br/>hint.length = len(spelling) :46-57"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 services/practice.py"]
+    P1["create_session() :103"]:::svc
+    P2["_load_normal_words() :82<br/>published 校验 :84-85"]:::svc
+    P3["_load_wrong_words() :91<br/>WrongWord.resolved=false :95-98"]:::svc
+    P4["_load_progress() :66<br/>批量 WordProgress"]:::svc
+    P5["_select_words() :39"]:::svc
+    P6["_split_by_mastery() :24<br/>mastery_level ≥ 2"]:::svc
+    P7["已掌握混入配额<br/>MASTERED_MIX_DIVISOR=5 :21"]:::svc
+    P8["SystemRandom 洗牌 + 不足补齐 :46-62"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("wordbooks / words")]:::db
+    D2[("word_progress")]:::db
+    D3[("wrong_words")]:::db
+    D4[("practice_sessions")]:::db
+    D5[("session_questions<br/>uq(session_id, word_id)")]:::db
+  end
+
+  V1{{"mode = normal？"}}:::dec
+  V2{{"wordbook_id 存在？"}}:::dec
+  V3{{"候选词为空？"}}:::dec
+  E1["422 normal 模式需要 wordbook_id"]:::err
+  E2["400 词书暂无单词 / 错词本为空"]:::err
+  E3["404 词书不存在或未 published"]:::err
+  N1["notice：可用单词不足，实际出题 N 道<br/>:131-133"]:::dec
+  OK["返回 session_id + questions（无 spelling）"]:::ok
+
+  A5 --> A1
+  A1 --> A2 --> A3 --> S1 --> S2 --> B1
+  A4 --> A2
+  S2 -->|"POST /api/v1/practice/sessions"| C1 --> P1
+  P1 --> V1
+  V1 -->|是| V2
+  V2 -->|否| E1
+  V2 -->|是| P2 --> D1
+  V1 -->|否 wrong_only| P3 --> D3
+  P2 --> V3
+  P3 --> V3
+  V3 -->|是| E2
+  V3 -->|否| P4 --> D2
+  P4 --> P5 --> P6 --> P7 --> P8
+  P8 --> N1
+  N1 --> D4
+  N1 --> D5
+  D4 --> OK
+  D5 --> OK
+  OK --> C2 --> S3 --> A6
+  P2 --> E3
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

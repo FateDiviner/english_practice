@@ -206,9 +206,7 @@ async def list_published_words(
     )
     total = (
         await session.scalar(
-            select(func.count(Word.id))
-            .outerjoin(WordProgress, progress_join)
-            .where(*conditions),
+            select(func.count(Word.id)).outerjoin(WordProgress, progress_join).where(*conditions),
         )
         or 0
     )

@@ -34,6 +34,12 @@ _GRAMMAR_KEYWORDS = (
 
 _WORD_KEYWORDS = ("什么意思", "单词", "词根", "词缀", "记忆", "用法", "搭配", "meaning of")
 
+_WORD_MEANING_PATTERN = re.compile(
+    r"\b(?:meaning|define|definition|explain\s+(?:the\s+)?word)\b"
+    r"|\bwhat\s+(?:does|do|is)\b[^.?!]{0,40}\bmean\b",
+    re.IGNORECASE,
+)
+
 _SINGLE_WORD_PATTERN = re.compile(r"^[A-Za-z][A-Za-z'-]{0,30}$")
 
 _ENGLISH_TOKEN_PATTERN = re.compile(r"[A-Za-z][A-Za-z'-]{1,30}")
@@ -55,6 +61,8 @@ def keyword_classify(message: str) -> Intent:
     if any(keyword in text for keyword in _GRAMMAR_KEYWORDS):
         return Intent.GRAMMAR
     if any(keyword in text for keyword in _WORD_KEYWORDS) and find_english_word(message):
+        return Intent.EXPLAIN_WORD
+    if _WORD_MEANING_PATTERN.search(message) and find_english_word(message):
         return Intent.EXPLAIN_WORD
     if _SINGLE_WORD_PATTERN.match(text):
         return Intent.EXPLAIN_WORD

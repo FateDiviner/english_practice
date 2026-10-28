@@ -77,9 +77,6 @@ class SkillRegistry:
     def list_intents(self) -> list[Intent]:
         return list(self._skills)
 
-    def list_skills(self) -> list[Skill]:
-        return list(self._skills.values())
-
     def describe_for_router(self) -> str:
         return "\n".join(
             f"- {skill.intent.value} ({skill.name}): {skill.description}"

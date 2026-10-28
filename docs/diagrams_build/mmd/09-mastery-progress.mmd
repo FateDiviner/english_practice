@@ -1,0 +1,57 @@
+flowchart TB
+  subgraph FE["前端 · 掌握度展示"]
+    A1["WordbookDetail.vue<br/>loadPage() :39<br/>详情 + 单词列表并发"]:::fe
+    A2["masteryLabel(level) :27<br/>0 新词 / 1 学习中 / 2 已掌握"]:::fe
+    A3["masteryClass(level) :33<br/>颜色点样式"]:::fe
+    A4["PracticeComplete.vue<br/>本轮 total / correct / accuracy"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/wordbooks.js<br/>listWordbooks() :3"]:::api
+    B2["api/wordbooks.js<br/>getWordbook() :7"]:::api
+    B3["api/wordbooks.js<br/>listWordbookWords() :11<br/>?mastery=0|1|2"]:::api
+    B4["api/practice.js<br/>finishPracticeSession() :11"]:::api
+  end
+
+  subgraph RT["后端 · 路由"]
+    C1["wordbooks.py<br/>list_wordbooks_endpoint() :31"]:::be
+    C2["wordbooks.py<br/>get_wordbook_endpoint() :63"]:::be
+    C3["wordbooks.py<br/>list_wordbook_words_endpoint() :83"]:::be
+    C4["practice.py<br/>finish_session_endpoint() :107"]:::be
+  end
+
+  subgraph SVC["后端 · 服务"]
+    S1["wordbook.py<br/>list_published_wordbooks() :120<br/>已掌握数 / 总词数 :133-143"]:::svc
+    S2["wordbook.py<br/>get_published_wordbook_detail() :165"]:::svc
+    S3["wordbook.py<br/>list_published_words() :180<br/>coalesce(mastery_level,0) :190-197"]:::svc
+    S4["practice_finish.py<br/>finish_session() :132"]:::svc
+    S5["_update_user_wordbook() :82<br/>upsert 进度 :89-109<br/>全部掌握 → completed :128-129"]:::svc
+    S6["_finish_result() :53<br/>_accuracy() :43"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("word_progress<br/>mastery_level 0/1/2<br/>correct_count / wrong_count<br/>consecutive_correct")]:::db
+    D2[("user_wordbooks<br/>status: learning/completed")]:::db
+    D3[("words")]:::db
+  end
+
+  M1["答题回写掌握度<br/>practice_answer.py:142-164"]:::svc
+
+  A1 --> B1 -->|"GET /wordbooks"| C1 --> S1 --> D1
+  A1 --> B2 -->|"GET /wordbooks/{id}"| C2 --> S2 --> D3
+  A1 --> B3 -->|"GET /wordbooks/{id}/words"| C3 --> S3 --> D1
+  S3 --> D3
+  S1 --> A2
+  S3 --> A2 --> A3
+  A4 --> B4 -->|"POST /practice/sessions/{id}/finish"| C4 --> S4
+  S4 --> S5 --> D2
+  S5 --> D1
+  S4 --> S6 --> A4
+  M1 --> D1
+  D1 --> S1
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127

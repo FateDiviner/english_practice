@@ -1,6 +1,7 @@
 from app.models.ai_conversation import AiConversation
 from app.models.ai_message import AiMessage
 from app.models.import_job import ImportJob
+from app.models.mcp import McpAuditLog, McpChangeRequest, McpImportUpload
 from app.models.practice_record import PracticeRecord
 from app.models.practice_session import PracticeSession
 from app.models.session_question import SessionQuestion
@@ -15,6 +16,9 @@ __all__ = [
     "AiConversation",
     "AiMessage",
     "ImportJob",
+    "McpAuditLog",
+    "McpChangeRequest",
+    "McpImportUpload",
     "PracticeRecord",
     "PracticeSession",
     "SessionQuestion",

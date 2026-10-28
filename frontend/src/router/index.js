@@ -91,6 +91,12 @@ const routes = [
         name: 'admin-users',
         component: () => import('../views/admin/UserManage.vue'),
       },
+      {
+        path: 'mcp-approvals',
+        name: 'admin-mcp-approvals',
+        component: () => import('../views/admin/McpApprovals.vue'),
+        meta: { title: 'MCP 审批' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

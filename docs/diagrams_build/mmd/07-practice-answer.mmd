@@ -1,0 +1,77 @@
+flowchart TB
+  subgraph FE["前端 · 作答与反馈"]
+    A1["SpellInput.vue<br/>handleKeydown() Enter :31"]:::fe
+    A2["QuestionCard.vue<br/>submit() :34<br/>isBusy / isSubmitted / 空输入拦截"]:::fe
+    A3["Practice.vue<br/>submitAnswer() :88"]:::fe
+    A4["stores/practice.js<br/>submitAnswer() :71<br/>phase='submitting' :74"]:::fe
+    A5["feedbackByWord[word_id]<br/>phase='submitted' :81-82"]:::fe
+    A6["QuestionCard.vue<br/>status / GradeMark / 例句 :108-130"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/practice.js<br/>submitPracticeAnswer() :7"]:::api
+  end
+
+  subgraph RT["后端 · 路由"]
+    C1["practice.py<br/>answer_question_endpoint() :75<br/>response_model_exclude_none :73"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 practice_answer.py"]
+    S1["answer_question() :81"]:::svc
+    S2["会话行锁 / 归属 / 状态校验 :90-98"]:::svc
+    S3["_find_existing_answer() :55<br/>幂等：返回首次结果 :100-102"]:::svc
+    S4["题目归属校验 :104-111"]:::svc
+    S5["grading.is_correct_answer() :22"]:::svc
+    S6["normalize_input() :6<br/>strip + lower"]:::svc
+    S7["get_variant_group()<br/>spelling_variants.py:37<br/>24 组英美变体"]:::svc
+    S8["宽松模式<br/>_remove_hyphens_and_spaces() :17"]:::svc
+    S9["正确分支 :142-159<br/>consecutive_correct+1<br/>≥2 → mastery_level=2 :146-147"]:::svc
+    S10["错误分支 :160-188<br/>mastery_level=1 :161-164<br/>错词插入/累加/复位 :174-188"]:::svc
+    S11["PracticeRecord 写入 :191-199"]:::svc
+    S12["_build_answer_result() :32"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("practice_sessions<br/>strict_mode / correct_count")]:::db
+    D2[("session_questions")]:::db
+    D3[("word_progress<br/>consecutive_correct / mastery_level")]:::db
+    D4[("wrong_words<br/>wrong_count / resolved")]:::db
+    D5[("practice_records<br/>uq(session_id, word_id)")]:::db
+  end
+
+  V1{{"会话已结束？"}}:::dec
+  V2{{"本题已作答？"}}:::dec
+  V3{{"拼写正确？"}}:::dec
+  E1["400 练习会话已结束"]:::err
+  E2["404 session / word 不存在"]:::err
+  R1["返回首次结果（不重复计分）"]:::ok
+  R2["正确：is_correct=true<br/>不回传 correct_spelling"]:::ok
+  R3["错误：is_correct=false<br/>回传 correct_spelling + 例句"]:::ok
+
+  A1 --> A2 --> A3 --> A4 --> B1 -->|"POST /sessions/{id}/answer"| C1 --> S1
+  S1 --> S2 --> V1
+  V1 -->|是| E1
+  V1 -->|否| S3 --> V2
+  V2 -->|是| R1 --> S12
+  V2 -->|否| S4 --> S5 --> S6 --> S7 --> S8
+  S5 --> V3
+  V3 -->|是| S9 --> D3
+  V3 -->|否| S10 --> D3
+  S10 --> D4
+  S9 --> S11 --> D5
+  S10 --> S11
+  S9 --> R2
+  S10 --> R3
+  R2 --> S12 --> C1
+  R3 --> S12
+  S12 --> A5 --> A6
+  S2 --> E2
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

@@ -108,10 +108,6 @@ class Blackboard:
         self.artifacts[agent_key] = output
         self.trace.append(agent_key)
 
-    def artifact_json(self, agent_key: str) -> dict[str, Any] | None:
-        artifact = self.artifacts.get(agent_key)
-        return artifact.model_dump(mode="json") if artifact is not None else None
-
     def get_unique_sources(self) -> set[str]:
         return {entry.agent_key for entry in self.entries}
 
@@ -120,13 +116,6 @@ class Blackboard:
             return "黑板当前为空，暂无专家贡献。"
         return "\n".join(
             f"[{entry.source}] {entry.preview(limit)} (置信度: {entry.confidence:.2f})"
-            for entry in self.entries
-        )
-
-    def get_full_content(self) -> str:
-        return "\n\n".join(
-            f"【{entry.source}】(置信度: {entry.confidence:.2f})\n"
-            f"{json.dumps(entry.content_json(), ensure_ascii=False, default=str)}"
             for entry in self.entries
         )
 
@@ -152,9 +141,7 @@ class Blackboard:
 
     def prompt_payload(self, max_items: int = 80) -> dict[str, Any]:
         """Keep prompts bounded while deterministic calculators still use all facts."""
-        previous = {
-            key: value.model_dump(mode="json") for key, value in self.artifacts.items()
-        }
+        previous = {key: value.model_dump(mode="json") for key, value in self.artifacts.items()}
         return {
             "user": {"id": self.user_id, "username": self.username},
             "word_progress": [
@@ -173,9 +160,7 @@ class Blackboard:
                     reverse=True,
                 )[:max_items]
             ],
-            "practice_sessions": [
-                item.__dict__ for item in self.practice_sessions[-max_items:]
-            ],
+            "practice_sessions": [item.__dict__ for item in self.practice_sessions[-max_items:]],
             "blackboard_summary": self.get_summary(limit=200),
             "previous_expert_analysis": previous,
         }

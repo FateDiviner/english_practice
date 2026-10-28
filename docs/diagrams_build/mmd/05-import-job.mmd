@@ -1,0 +1,63 @@
+flowchart TB
+  subgraph FE["前端 · 进度轮询与结果展示"]
+    A1["confirmImport() 成功后<br/>importJob = {status:'pending'}<br/>:120-122"]:::fe
+    A2["scheduleJobPolling() :141<br/>setTimeout 1200ms"]:::fe
+    A3["loadImportJob() :130"]:::fe
+    A4{{"status ∈ {pending, processing}？"}}:::dec
+    A5["继续轮询"]:::fe
+    A6["clearPolling() :60<br/>onBeforeUnmount :162"]:::fe
+    A7["ImportResultPanel.vue<br/>状态/计数/失败明细 :12-47"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/admin.js<br/>getAdminImportJob() :81"]:::api
+  end
+
+  subgraph RT["后端 · 路由"]
+    C1["admin_import.py<br/>get_import_job_endpoint() :119"]:::be
+    C2["import_job.py<br/>get_import_job() :30<br/>不存在 404"]:::be
+  end
+
+  subgraph BG["后台任务（FastAPI BackgroundTasks）"]
+    W1["import_worker.py<br/>process_import_job() :102"]:::svc
+    W2["async_session_factory()<br/>自建独立会话 :109"]:::svc
+    W3["job.status = processing<br/>commit :114-115"]:::svc
+    W4["_process_rows() :42"]:::svc
+    W5["parse_import_file() 重新解析 :49"]:::svc
+    W6["_load_existing_spellings() :37<br/>casefold 预载已有拼写"]:::svc
+    W7["parse_word_row() :83<br/>空值 / 超长 / sort_order 校验"]:::svc
+    W8["_insert_word() :22<br/>begin_nested() 保存点"]:::svc
+    W9["errors.append({row, content, reason})"]:::err
+    W10["status = done<br/>success/failed 计数 :95-99"]:::ok
+    W11["except → rollback → status = failed<br/>:117-131"]:::err
+  end
+
+  subgraph DB["数据层"]
+    D1[("import_jobs<br/>total_rows / success_rows<br/>failed_rows / error_detail JSON")]:::db
+    D2[("words<br/>uq(wordbook_id, spelling)")]:::db
+  end
+
+  A1 --> A2 --> A3 --> B1 -->|"GET /admin/import-jobs/{id}"| C1 --> C2 --> D1
+  C2 --> A4
+  A4 -->|是| A5 --> A2
+  A4 -->|否| A6 --> A7
+
+  W1 --> W2 --> W3 --> D1
+  W3 --> W4 --> W5 --> W6
+  W6 --> W7
+  W7 -->|校验失败| W9
+  W7 -->|通过| W8 --> D2
+  D2 -->|唯一键冲突| W9
+  W8 -->|成功| W10
+  W9 --> W10
+  W10 --> D1
+  W4 -->|未捕获异常| W11 --> D1
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

@@ -4,12 +4,13 @@
 - MockLLMClient：本地假数据客户端，无外部依赖，用于跑通 Router + Skill 链路
 - OpenAICompatibleClient：OpenAI 兼容协议客户端（DeepSeek / Ollama / vLLM 均可接入）
 
-切换方式：.env 中配置 AI_PROVIDER=openai、AI_PROVIDER_URL、AI_API_KEY、AI_MODEL，
-未配置时自动回退到 Mock 客户端。
+切换方式：.env 中配置 AI_PROVIDER（任意非 mock 值，如 openai / mimo）、
+AI_PROVIDER_URL、AI_PROVIDER_KEY、AI_MODEL，缺任一项时自动回退到 Mock 客户端。
 """
 
 import asyncio
 import json
+import logging
 import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -17,11 +18,15 @@ from functools import lru_cache
 from typing import Protocol
 
 import httpx
+from langsmith import traceable
 
 from app.core.config import get_settings
+from app.core.tracing import annotate_trace
 from app.services.agent.heuristics import find_english_word, keyword_classify
 from app.services.agent.intent import Intent
 from app.services.agent.prompts import ROUTER_SCORE_PROMPT_TAG
+
+logger = logging.getLogger(__name__)
 
 MOCK_CHUNK_DELAY_SECONDS = 0.01
 REQUEST_TIMEOUT_SECONDS = 60
@@ -118,6 +123,20 @@ def _grammar_reply() -> str:
     )
 
 
+def _llm_trace_inputs(inputs: dict) -> dict:
+    """把内部消息对象转成可读的 trace 输入。"""
+    return {
+        "messages": [
+            {"role": item.role, "content": item.content}
+            for item in inputs.get("messages", [])
+        ]
+    }
+
+
+def _join_chunks(chunks: list[str]) -> str:
+    return "".join(chunks)
+
+
 class OpenAICompatibleClient:
     """OpenAI 兼容 /chat/completions 客户端，SSE 流式解析增量文本。"""
 
@@ -126,7 +145,14 @@ class OpenAICompatibleClient:
         self._api_key = api_key
         self._model = model
 
+    @traceable(
+        run_type="llm",
+        name="llm.chat_completion",
+        process_inputs=_llm_trace_inputs,
+        reduce_fn=_join_chunks,
+    )
     async def stream(self, messages: list[ChatMessage]) -> AsyncIterator[str]:
+        annotate_trace(model=self._model)
         headers = {"Authorization": f"Bearer {self._api_key}"}
         payload = {
             "model": self._model,
@@ -136,6 +162,9 @@ class OpenAICompatibleClient:
         timeout = httpx.Timeout(REQUEST_TIMEOUT_SECONDS, connect=REQUEST_TIMEOUT_SECONDS)
         async with httpx.AsyncClient(timeout=timeout) as http:
             async with http.stream("POST", self._url, headers=headers, json=payload) as response:
+                if response.status_code >= 400:
+                    body = (await response.aread()).decode("utf-8", "replace")[:300]
+                    raise RuntimeError(f"模型服务返回 HTTP {response.status_code}：{body}")
                 async for line in response.aiter_lines():
                     chunk = _parse_sse_data_line(line)
                     if chunk:
@@ -157,12 +186,25 @@ def _parse_sse_data_line(line: str) -> str | None:
         return None
 
 
+def is_mock_provider() -> bool:
+    """是否应使用 Mock 客户端：显式 mock，或真实服务配置不完整。"""
+    settings = get_settings()
+    provider = (settings.AI_PROVIDER or "").strip().lower()
+    return provider in ("", "mock") or not (settings.AI_PROVIDER_URL and settings.AI_PROVIDER_KEY)
+
+
 @lru_cache
 def get_llm_client() -> LLMClient:
     """按配置选择真实客户端或 Mock 客户端，进程内单例。"""
+    if is_mock_provider():
+        settings = get_settings()
+        if (settings.AI_PROVIDER or "").strip().lower() not in ("", "mock"):
+            logger.warning(
+                "AI_PROVIDER=%s 但 AI_PROVIDER_URL 或 AI_PROVIDER_KEY 未配置，已回退到 Mock 客户端",
+                settings.AI_PROVIDER,
+            )
+        return MockLLMClient()
     settings = get_settings()
-    if settings.AI_PROVIDER == "openai" and settings.AI_API_KEY and settings.AI_PROVIDER_URL:
-        return OpenAICompatibleClient(
-            settings.AI_PROVIDER_URL, settings.AI_API_KEY, settings.AI_MODEL
-        )
-    return MockLLMClient()
+    return OpenAICompatibleClient(
+        settings.AI_PROVIDER_URL, settings.AI_PROVIDER_KEY, settings.AI_MODEL
+    )

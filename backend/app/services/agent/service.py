@@ -4,6 +4,8 @@ import json
 from collections.abc import AsyncIterator
 from functools import lru_cache
 
+from langsmith import traceable
+
 from app.services.agent.client import ChatMessage, get_llm_client
 from app.services.agent.router import IntentRouter
 from app.services.agent.skills import SkillContext, build_default_registry
@@ -16,6 +18,27 @@ def format_sse(event: str, payload: dict) -> str:
     return f"event: {event}\ndata: {body}\n\n"
 
 
+def _agent_trace_inputs(inputs: dict) -> dict:
+    return {
+        "message": inputs.get("message"),
+        "scene": inputs.get("scene"),
+        "history_length": len(inputs.get("history") or []),
+    }
+
+
+def _reduce_agent_events(events: list[tuple[str, dict]]) -> dict:
+    reply = "".join(
+        payload.get("content", "") for event, payload in events if event == "delta"
+    )
+    meta = next((payload for event, payload in events if event == "meta"), {})
+    return {
+        "intent": meta.get("intent"),
+        "skill": meta.get("skill"),
+        "confidence": meta.get("confidence"),
+        "reply": reply,
+    }
+
+
 class AgentService:
     """智能伴学辅导体核心服务：意图识别、技能分发、流式回复。"""
 
@@ -24,6 +47,12 @@ class AgentService:
         self._skills = skills
         self._llm = llm
 
+    @traceable(
+        run_type="chain",
+        name="agent.chat",
+        process_inputs=_agent_trace_inputs,
+        reduce_fn=_reduce_agent_events,
+    )
     async def stream_events(
         self,
         message: str,

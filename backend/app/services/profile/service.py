@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
 
+from langsmith import traceable
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -19,7 +20,7 @@ from app.schemas.admin_profile import (
     ProfileUserOut,
     UserProfileOut,
 )
-from app.services.agent.client import get_llm_client
+from app.services.agent.client import get_llm_client, is_mock_provider
 from app.services.profile.agents import BaseProfileExpert, build_default_agents
 from app.services.profile.blackboard import Blackboard, collect_blackboard
 from app.services.profile.cache import TTLProfileCache
@@ -77,8 +78,7 @@ def assemble_profile_report(blackboard: Blackboard) -> UserProfileOut:
         wrong_word_count=len(blackboard.wrong_words),
         practice_session_count=len(practice_sessions),
         first_practice_at=practice_sessions[0].started_at if practice_sessions else None,
-        last_practice_at=practice_sessions[-1].finished_at
-        or practice_sessions[-1].started_at
+        last_practice_at=practice_sessions[-1].finished_at or practice_sessions[-1].started_at
         if practice_sessions
         else None,
     )
@@ -88,9 +88,7 @@ def assemble_profile_report(blackboard: Blackboard) -> UserProfileOut:
         *diagnosis.metrics,
     ]
     overall_score = (
-        sum(item.score for item in radar_metrics) / len(radar_metrics)
-        if radar_metrics
-        else 0
+        sum(item.score for item in radar_metrics) / len(radar_metrics) if radar_metrics else 0
     )
     level = _level(coverage, overall_score)
     tags = _unique(
@@ -136,6 +134,10 @@ def assemble_profile_report(blackboard: Blackboard) -> UserProfileOut:
     )
 
 
+def _profile_trace_inputs(inputs: dict) -> dict:
+    return {"user_id": inputs.get("user_id")}
+
+
 class ProfileOrchestrator:
     """Controller-driven Blackboard analysis with a cached final report."""
 
@@ -149,6 +151,11 @@ class ProfileOrchestrator:
         self._cache = cache
         self._controller = controller or BlackboardController()
 
+    @traceable(
+        run_type="chain",
+        name="profile.analyze",
+        process_inputs=_profile_trace_inputs,
+    )
     async def analyze(self, session: AsyncSession, user_id: int) -> UserProfileOut:
         blackboard = await collect_blackboard(session, user_id)
         cache_key = f"{user_id}:{blackboard.fingerprint()}"
@@ -180,7 +187,7 @@ class ProfileOrchestrator:
 @lru_cache
 def get_profile_orchestrator() -> ProfileOrchestrator:
     settings = get_settings()
-    llm = None if settings.AI_PROVIDER == "mock" else get_llm_client()
+    llm = None if is_mock_provider() else get_llm_client()
     return ProfileOrchestrator(
         agents=build_default_agents(llm),
         cache=TTLProfileCache(settings.PROFILE_CACHE_TTL_SECONDS),

@@ -15,10 +15,6 @@ ADMIN_PASSWORD = "AdminPass123!"
 USER_PASSWORD = "UserPass123!"
 
 
-def make_suffix(label: str) -> str:
-    return f"pytest_uw_{label}_{uuid4().hex[:10]}"
-
-
 async def clean_user_wordbook_data() -> None:
     async with async_session_factory() as session:
         user_ids = select(User.id).where(User.username.like("pytest_uw_user_%"))
@@ -68,9 +64,7 @@ async def user_headers(client: AsyncClient, label: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {login_response.json()['data']['access_token']}"}
 
 
-async def user_identity(
-    client: AsyncClient, label: str
-) -> tuple[dict[str, str], int]:
+async def user_identity(client: AsyncClient, label: str) -> tuple[dict[str, str], int]:
     headers = await user_headers(client, label)
     response = await client.get("/api/v1/auth/me", headers=headers)
     assert response.status_code == 200
@@ -193,19 +187,13 @@ async def test_wordbook_list_returns_user_mastered_progress(client: AsyncClient)
     response = await client.get("/api/v1/wordbooks?page=1&page_size=100", headers=user)
     assert response.status_code == 200
     item = next(
-        entry
-        for entry in response.json()["data"]["items"]
-        if entry["id"] == wordbook["id"]
+        entry for entry in response.json()["data"]["items"] if entry["id"] == wordbook["id"]
     )
     assert item["my_progress"] == {"mastered": 2, "total": 3}
 
-    other_response = await client.get(
-        "/api/v1/wordbooks?page=1&page_size=100", headers=other
-    )
+    other_response = await client.get("/api/v1/wordbooks?page=1&page_size=100", headers=other)
     other_item = next(
-        entry
-        for entry in other_response.json()["data"]["items"]
-        if entry["id"] == wordbook["id"]
+        entry for entry in other_response.json()["data"]["items"] if entry["id"] == wordbook["id"]
     )
     assert other_item["my_progress"] == {"mastered": 1, "total": 3}
 

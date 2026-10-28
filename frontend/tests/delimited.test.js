@@ -1,18 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { parseDelimited, suggestMapping, validateImportRows } from '../src/utils/delimited.js'
-
-test('parses quoted CSV and preserves embedded commas', () => {
-  const rows = parseDelimited(
-    '\uFEFFspelling,meaning_cn,example_en\ncolour,"颜色,色彩","Red is a colour."\n',
-  )
-
-  assert.deepEqual(rows, [
-    ['spelling', 'meaning_cn', 'example_en'],
-    ['colour', '颜色,色彩', 'Red is a colour.'],
-  ])
-})
+import { suggestMapping, validateImportRows } from '../src/utils/delimited.js'
 
 test('detects common English and Chinese headers', () => {
   const mapping = suggestMapping(['单词', 'UK', '释义', '词性'])

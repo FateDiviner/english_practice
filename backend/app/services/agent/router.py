@@ -5,6 +5,8 @@ import logging
 import re
 from dataclasses import dataclass
 
+from langsmith import traceable
+
 from app.services.agent.client import ChatMessage, LLMClient
 from app.services.agent.heuristics import keyword_classify
 from app.services.agent.intent import Intent
@@ -121,14 +123,34 @@ def _build_decision(
     )
 
 
+def _trace_decision(decision: RouteDecision) -> dict:
+    return {
+        "intent": decision.intent.value,
+        "skill": decision.skill,
+        "confidence": decision.confidence,
+        "fallback_used": decision.fallback_used,
+        "reason": decision.reason,
+    }
+
+
 class IntentRouter:
-    """LLM 多技能评分路由；模型调用或解析失败时回退到本地关键词规则。"""
+    """多技能路由：关键词明确命中时直接分发，其余交给模型评分。"""
 
     def __init__(self, llm: LLMClient, skills: SkillRegistry) -> None:
         self._llm = llm
         self._skills = skills
 
+    @traceable(run_type="chain", name="agent.route", process_outputs=_trace_decision)
     async def decide(self, message: str) -> RouteDecision:
+        fast_intent = keyword_classify(message)
+        if fast_intent is not Intent.GENERAL:
+            return _build_decision(
+                _fallback_scores(message, self._skills),
+                self._skills,
+                fallback_used=False,
+                reason="关键词规则命中，已跳过模型路由",
+            )
+
         prompt = ROUTER_SCORE_PROMPT_TEMPLATE.format(
             skills_desc=self._skills.describe_for_router(),
             json_example=json.dumps(self._skills.score_schema(), ensure_ascii=False),
@@ -137,9 +159,7 @@ class IntentRouter:
         try:
             chunks = [
                 chunk
-                async for chunk in self._llm.stream(
-                    [ChatMessage(role="user", content=prompt)]
-                )
+                async for chunk in self._llm.stream([ChatMessage(role="user", content=prompt)])
             ]
             parsed = _parse_score_payload("".join(chunks), self._skills)
         except Exception:
@@ -165,7 +185,3 @@ class IntentRouter:
     async def classify(self, message: str) -> Intent:
         """兼容只需要意图枚举的调用方。"""
         return (await self.decide(message)).intent
-
-    async def route(self, message: str) -> str:
-        """返回命中的技能名称，便于调试或非流式调用。"""
-        return (await self.decide(message)).skill

@@ -1,0 +1,72 @@
+flowchart TB
+  subgraph FE["前端 · 视图层（frontend/src/views/auth）"]
+    A1["Login.vue<br/>form :11 · submit() :15"]:::fe
+    A2["Register.vue<br/>validate() :13 · submit() :21"]:::fe
+    A3["读取 redirect 查询参数<br/>router.replace :28-29"]:::fe
+  end
+
+  subgraph API["前端 · 状态与请求层"]
+    B1["stores/auth.js<br/>login() :49"]:::fe
+    B2["api/auth.js<br/>login() :7 · register() :3"]:::api
+    B3["api/request.js<br/>请求拦截器 :21（注入 Bearer）"]:::api
+    B4["api/request.js<br/>响应拦截器 :57（code=0 解包）"]:::api
+    B5["stores/auth.js<br/>setSession() :33 → setToken() :25"]:::fe
+    B6["localStorage<br/>english_practice_token / _user"]:::fe
+  end
+
+  subgraph BE["后端 · 路由与业务服务"]
+    C1["api/v1/auth.py<br/>login() :37"]:::be
+    C2["services/auth.py<br/>authenticate_user() :79"]:::be
+    C3["services/auth.py<br/>get_user_by_account() :16"]:::be
+    C4["core/security.py<br/>verify_password() :23"]:::be
+    C5["core/security.py<br/>create_access_token() :31"]:::be
+    C6["api/v1/auth.py<br/>register() :22"]:::be
+    C7["services/auth.py<br/>register_user() :45"]:::be
+    C8["services/auth.py<br/>_has_identity_conflict() :25"]:::be
+    C9["core/security.py<br/>hash_password() :14"]:::be
+  end
+
+  subgraph DB["数据层"]
+    D1[("users 表<br/>username / email 唯一<br/>models/user.py:9")]:::db
+  end
+
+  E1{{"账号或密码为空？"}}:::dec
+  E2{{"用户存在且密码正确？"}}:::dec
+  E3{{"status = disabled？"}}:::dec
+  E4{{"username / email 冲突？"}}:::dec
+  ERR1["表单内联错误提示"]:::err
+  ERR2["401 / 40101<br/>账号或密码错误"]:::err
+  ERR3["403 / 40301<br/>账号已被禁用"]:::err
+  ERR4["409 / 40901<br/>用户名或邮箱已存在"]:::err
+  OK1["TokenOut<br/>access_token + user"]:::ok
+  OK2["201 UserOut<br/>跳转 /login?registered=1"]:::ok
+
+  A1 --> B1 --> B2 --> B3 -->|"POST /api/v1/auth/login"| C1
+  A1 --> E1
+  E1 -->|是| ERR1
+  E1 -->|否| B1
+  C1 --> C2 --> C3 --> D1
+  C3 --> E2
+  E2 -->|否| ERR2
+  E2 -->|是| E3
+  E3 -->|是| ERR3
+  E3 -->|否| C5 --> OK1
+  OK1 --> B4 --> B5 --> B6 --> A3
+
+  A2 --> B2 -->|"POST /api/v1/auth/register"| C6 --> C7 --> C8 --> D1
+  C8 --> E4
+  E4 -->|是| ERR4
+  E4 -->|否| C9 --> D1
+  C9 --> OK2
+  C4 -. 校验哈希 .- C2
+  ERR2 --> B4
+  ERR3 --> B4
+  ERR4 --> B4
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

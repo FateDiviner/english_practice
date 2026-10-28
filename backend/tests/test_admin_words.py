@@ -14,10 +14,6 @@ ADMIN_PASSWORD = "AdminPass123!"
 USER_PASSWORD = "UserPass123!"
 
 
-def make_name(label: str) -> str:
-    return f"pytest_word_{label}_{uuid4().hex[:10]}"
-
-
 async def clean_word_data() -> None:
     async with async_session_factory() as session:
         wordbook_ids = select(Wordbook.id).where(Wordbook.name.like("pytest_word_wb_%"))

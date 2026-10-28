@@ -1,0 +1,49 @@
+flowchart TB
+  subgraph P["浏览器 · Vue 3 SPA"]
+    direction LR
+    V["视图层<br/>views/user · views/admin · views/auth"]
+    C["组件层<br/>components/**"]
+    S["状态层 Pinia<br/>stores/auth.js · stores/practice.js"]
+    A["API 层<br/>src/api/*.js"]
+    R["请求层<br/>request.js<br/>Bearer 注入 / code=0 解包"]
+    RT["路由层<br/>router/index.js<br/>requiresAuth / requiresAdmin"]
+    V --> C
+    V --> S
+    S --> A
+    C --> S
+    A --> R
+    RT --> S
+  end
+
+  subgraph B["服务端 · FastAPI"]
+    direction LR
+    RO["路由层 api/v1/*.py<br/>参数校验 · 鉴权依赖"]
+    SV["服务层 services/*.py<br/>业务规则 · 事务"]
+    MD["模型层 models/*.py<br/>SQLAlchemy 2.0 AsyncSession"]
+    SK["Agent / Profile 子系统<br/>Router · Skill · Blackboard"]
+    RO --> SV
+    SV --> MD
+    RO --> SK
+    SK --> SV
+  end
+
+  subgraph D["数据与外部依赖"]
+    direction LR
+    DB[("MySQL<br/>users / wordbooks / words<br/>practice_sessions / word_progress<br/>wrong_words / import_jobs<br/>ai_conversations / ai_messages")]
+    LLM["OpenAI 兼容模型<br/>未配置时 MockLLMClient"]
+    TTS["Windows SAPI<br/>PowerShell 合成 WAV 缓存"]
+  end
+
+  R -->|"HTTP /api/v1<br/>JSON + SSE"| RO
+  MD --> DB
+  SK --> LLM
+  SV --> TTS
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  class V,C,S,A,R,RT fe
+  class RO,SV,MD,SK be
+  class DB,LLM,TTS db

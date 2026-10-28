@@ -13,7 +13,3 @@ export function listWordbookWords(wordbookId, { page = 1, pageSize = 20, mastery
     params: { page, page_size: pageSize, mastery },
   })
 }
-
-export function startWordbook(wordbookId) {
-  return request.post(`/wordbooks/${wordbookId}/start`)
-}

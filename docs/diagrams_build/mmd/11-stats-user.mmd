@@ -1,0 +1,64 @@
+flowchart TB
+  subgraph FE["前端 · 首页与学习账本"]
+    A1["Home.vue<br/>onMounted :22-30<br/>并发加载概览 + 词书"]:::fe
+    A2["Home.vue 渲染<br/>累计默写 / 正确率 / 连续天数 :46-63"]:::fe
+    A3["Profile.vue<br/>loadProfile() :97-112<br/>并发概览 + 每日趋势"]:::fe
+    A4["Profile.vue<br/>changeRange(days) :114-118"]:::fe
+    A5["Profile.vue computed<br/>dateSeries :28 · chartItems :38<br/>trendValues :46 · metrics :47 · achievements :79"]:::fe
+    A6["LineChart.vue chart :14<br/>Sparkline.vue points :10"]:::fe
+  end
+
+  subgraph UTL["前端工具 utils/format.js"]
+    U1["buildDateRange(days) :49"]:::fe
+    U2["toIsoDate() :41"]:::fe
+    U3["formatPercent() :22"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/stats.js<br/>getStatsOverview() :3"]:::api
+    B2["api/stats.js<br/>getStatsDaily() :7"]:::api
+  end
+
+  subgraph BE["后端 · 路由 stats.py"]
+    C1["get_overview_endpoint() :22"]:::be
+    C2["get_daily_endpoint() :42"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 services/stats.py"]
+    S1["get_overview() :69"]:::svc
+    S2["累计答题 / 正确数 / 正确率 :70-82"]:::svc
+    S3["_compute_streak() :60<br/>连续学习天数"]:::svc
+    S4["已掌握词数<br/>mastery_level=2 :96-104"]:::svc
+    S5["未解决错词数 :105-113"]:::svc
+    S6["get_daily() :124<br/>日期校验 ≤90 天 :130-133"]:::svc
+    S7["本地时区边界 :135-139<br/>按日 GROUP BY :141-155"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("practice_records<br/>answered_at / is_correct")]:::db
+    D2[("practice_sessions<br/>user_id")]:::db
+    D3[("word_progress")]:::db
+    D4[("wrong_words")]:::db
+  end
+
+  A1 --> B1 -->|"GET /stats/overview"| C1 --> S1
+  S1 --> S2 --> D1
+  S1 --> S3 --> D2
+  S1 --> S4 --> D3
+  S1 --> S5 --> D4
+  S2 --> A2
+  A3 --> B1
+  A3 --> B2
+  A4 --> A3
+  U1 --> B2
+  U2 --> B2
+  B2 -->|"GET /stats/daily?from=&amp;to="| C2 --> S6 --> S7 --> D1
+  S7 --> A3
+  A2 --> U3
+  A3 --> A5 --> A6
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127

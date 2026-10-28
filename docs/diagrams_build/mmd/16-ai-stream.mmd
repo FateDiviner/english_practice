@@ -1,0 +1,89 @@
+flowchart TB
+  subgraph FE["前端 · AiChat.vue 发送与流式接收"]
+    A1["ChatComposer.vue<br/>submit() :23 → emit('send')"]:::fe
+    A2["AiChat.vue sendMessage(text) :98<br/>无会话则先新建 :100-103"]:::fe
+    A3["isStreaming=true<br/>new AbortController() :111-112"]:::fe
+    A4["streamAgentChat({signal,onMeta,onDelta,onDone}) :114"]:::fe
+    A5["onMeta → reply.meta :120<br/>onDelta → 拼接 content :123<br/>onDone → 结束流 :126"]:::fe
+    A6["stopStreaming() :145<br/>controller.abort()"]:::fe
+    A7["AbortError → reply.stopped=true :130-133"]:::fe
+  end
+
+  subgraph API["前端 API / SSE 工具"]
+    B1["api/ai.js<br/>streamAgentChat() :32<br/>fetch POST /agent/chat + Bearer"]:::api
+    B2["utils/sse.js<br/>consumeSseResponse() :63<br/>getReader() 逐块读"]:::api
+    B3["createSseParser() :38<br/>按 \\n\\n 分帧"]:::api
+    B4["parseSseFrame() :8<br/>event / data"]:::api
+    B5["事件分发 :71-81<br/>meta / delta / done / error"]:::api
+  end
+
+  subgraph RT["后端 · 路由 agent.py"]
+    C1["agent_chat() :74<br/>StreamingResponse :98"]:::be
+    C2["get_agent_service() :81"]:::be
+    C3["prepare_chat_turn() :83-90<br/>ai_conversation.py:136"]:::be
+    C4["_stream_chat() :30<br/>转发事件 + 累计 delta"]:::be
+    C5["finally: 非空则 _persist_reply() :59-62"]:::be
+    C6["_persist_reply() :65<br/>asyncio.create_task + shield"]:::be
+  end
+
+  subgraph SVC["后端 · Agent 服务 service.py"]
+    S1["stream_events() :56"]:::svc
+    S2["router.decide() :63<br/>router.py:144"]:::svc
+    S3["keyword_classify() :145<br/>heuristics.py:54"]:::svc
+    S4["_fallback_scores() :83<br/>_build_decision() :94"]:::svc
+    S5["LLM 评分 :160-164<br/>_parse_score_payload() :45"]:::svc
+    S6["skills.get(intent)<br/>base.py:63"]:::svc
+    S7["skill.build_messages()<br/>base.py:26"]:::svc
+    S8["llm.stream(messages) :86-87"]:::svc
+  end
+
+  subgraph CL["模型客户端 client.py"]
+    L1["OpenAICompatibleClient.stream() :154<br/>POST /chat/completions"]:::svc
+    L2["MockLLMClient.stream() :58<br/>未配置时回退"]:::svc
+    L3["get_llm_client() :196<br/>is_mock_provider() :189"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("ai_conversations")]:::db
+    D2[("ai_messages<br/>user 消息流前写入<br/>assistant 全文流后写入")]:::db
+  end
+
+  V1{{"关键词命中？"}}:::dec
+  V2{{"模型可用 / JSON 合法？"}}:::dec
+  V3{{"客户端中断？"}}:::dec
+  E1["error 事件<br/>已生成部分仍落库"]:::err
+  M1["meta 事件<br/>intent/skill/confidence/fallback_used"]:::ok
+  M2["delta 事件（逐块）"]:::ok
+  M3["done 事件 finish_reason=stop"]:::ok
+
+  A1 --> A2 --> A3 --> A4 --> B1 -->|"POST /api/v1/agent/chat"| C1
+  C1 --> C2 --> C3 --> D1
+  C3 --> D2
+  C3 --> C4
+  C4 --> S1 --> S2 --> S3 --> V1
+  V1 -->|是| S4
+  V1 -->|否| S5 --> V2
+  V2 -->|否| S4
+  V2 -->|是| S4
+  S4 --> S6 --> S7 --> S8 --> L3
+  L3 --> L1
+  L3 --> L2
+  S1 --> M1 --> C4
+  S1 --> M2 --> C4
+  S1 --> M3 --> C4
+  C4 --> B2 --> B3 --> B4 --> B5 --> A5
+  A6 -. abort .-> V3
+  V3 -->|是| C5 --> C6 --> D2
+  V3 -->|否| C5
+  L1 -->|HTTP ≥400| E1
+  E1 --> C4
+  A7 --> A5
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

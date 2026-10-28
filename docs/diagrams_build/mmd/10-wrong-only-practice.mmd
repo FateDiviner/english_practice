@@ -1,0 +1,61 @@
+flowchart TB
+  subgraph FE["前端 · 错词专项重练"]
+    A1["WrongWords.vue :74-79<br/>RouterLink /practice?mode=wrong_only&amp;count=10"]:::fe
+    A2["PracticeSetup.vue :57-62<br/>切到错词专项 → start() :28"]:::fe
+    A3["Practice.vue<br/>startFromQuery() :69<br/>count 仅接受 10/20/50 :71-72"]:::fe
+    A4["Practice.vue<br/>startPractice() :55"]:::fe
+    A5["完成页 PracticeComplete<br/>再来一组 replay() :114"]:::fe
+  end
+
+  subgraph ST["前端 · Pinia"]
+    S1["stores/practice.js<br/>startSession() :44<br/>wrong_only 时 wordbook_id=null :53"]:::fe
+  end
+
+  subgraph API["前端 API"]
+    B1["api/practice.js<br/>createPracticeSession() :3"]:::api
+  end
+
+  subgraph BE["后端 · 路由"]
+    C1["practice.py<br/>create_session_endpoint() :32"]:::be
+  end
+
+  subgraph SVC["后端 · 服务 practice.py"]
+    P1["create_session() :103"]:::svc
+    P2["else 分支 wrong_only :117-119"]:::svc
+    P3["_load_wrong_words() :91<br/>JOIN words<br/>WrongWord.resolved=false :95-98"]:::svc
+    P4["空错词本 → 400 :121-123"]:::err
+    P5["_select_words() :39<br/>随机 + 题数上限"]:::svc
+    P6["notice 不足提示 :131-133"]:::svc
+  end
+
+  subgraph ANS["后端 · 作答与解决"]
+    Q1["practice_answer.py<br/>answer_question() :81"]:::svc
+    Q2["答错：resolved=False<br/>wrong_count+1 :184-188"]:::svc
+    Q3["连续正确 ≥2：resolved=True<br/>resolved_at=now :146-158"]:::svc
+  end
+
+  subgraph DB["数据层"]
+    D1[("wrong_words<br/>resolved")]:::db
+    D2[("practice_sessions<br/>mode=wrong_only")]:::db
+    D3[("session_questions")]:::db
+  end
+
+  A1 --> A3
+  A2 --> A3
+  A3 --> A4 --> S1 --> B1 -->|"POST /practice/sessions<br/>mode=wrong_only"| C1 --> P1
+  P1 --> P2 --> P3 --> D1
+  P3 --> P4
+  P3 --> P5 --> P6
+  P5 --> D2
+  P5 --> D3
+  P6 --> D2
+  Q1 --> Q2 --> D1
+  Q1 --> Q3 --> D1
+  A5 --> A4
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c

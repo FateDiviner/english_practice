@@ -11,7 +11,3 @@ export function submitPracticeAnswer(sessionId, payload) {
 export function finishPracticeSession(sessionId) {
   return request.post(`/practice/sessions/${sessionId}/finish`)
 }
-
-export function getPracticeSession(sessionId) {
-  return request.get(`/practice/sessions/${sessionId}`)
-}

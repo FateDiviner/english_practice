@@ -10,50 +10,6 @@ export const IMPORT_FIELDS = [
   { key: 'sort_order', label: '排序', aliases: ['sort_order', 'order', '排序'] },
 ]
 
-function detectDelimiter(firstLine) {
-  const counts = { ',': 0, '\t': 0, ';': 0 }
-  let isQuoted = false
-  for (const character of firstLine) {
-    if (character === '"') isQuoted = !isQuoted
-    if (!isQuoted && character in counts) counts[character] += 1
-  }
-  return Object.entries(counts).sort((left, right) => right[1] - left[1])[0][0]
-}
-
-export function parseDelimited(text) {
-  const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n')
-  const firstLine = normalized.split('\n', 1)[0] || ''
-  const delimiter = detectDelimiter(firstLine)
-  const rows = []
-  let row = []
-  let field = ''
-  let isQuoted = false
-
-  for (let index = 0; index < normalized.length; index += 1) {
-    const character = normalized[index]
-    const nextCharacter = normalized[index + 1]
-    if (character === '"' && isQuoted && nextCharacter === '"') {
-      field += '"'
-      index += 1
-    } else if (character === '"') {
-      isQuoted = !isQuoted
-    } else if (character === delimiter && !isQuoted) {
-      row.push(field.trim())
-      field = ''
-    } else if (character === '\n' && !isQuoted) {
-      row.push(field.trim())
-      if (row.some((value) => value !== '')) rows.push(row)
-      row = []
-      field = ''
-    } else {
-      field += character
-    }
-  }
-  row.push(field.trim())
-  if (row.some((value) => value !== '')) rows.push(row)
-  return rows
-}
-
 export function suggestMapping(headers) {
   const mapping = {}
   for (const field of IMPORT_FIELDS) {

@@ -1,0 +1,71 @@
+flowchart TB
+  subgraph FE["前端 · AudioButton.vue"]
+    A1["@click play() :86"]:::fe
+    A2{{"props.audioUrl 存在？"}}:::dec
+    A3["playUrl(url) :28<br/>new Audio(url)"]:::fe
+    A4["getWordAudio(wordId) :93"]:::fe
+    A5["playSystemAudio() :35"]:::fe
+    A6{{"拿到播放地址？"}}:::dec
+    A7["playUrl() :95"]:::fe
+    A8["playTts(text) :71<br/>浏览器 SpeechSynthesis"]:::fe
+    A9["pickVoice(lang) :56<br/>en-US / en-GB"]:::fe
+    A10["releaseAudio() :19<br/>pause + revokeObjectURL"]:::fe
+  end
+
+  subgraph API["前端 API audio.js"]
+    B1["getWordAudio() :3<br/>GET /words/{id}/audio"]:::api
+    B2["getWordTtsAudio() :7<br/>GET /words/{id}/audio/file?accent=<br/>responseType=blob"]:::api
+  end
+
+  subgraph RT["后端 · 路由 audio.py"]
+    C1["get_word_audio_endpoint() :24"]:::be
+    C2["get_word_audio_file_endpoint() :39<br/>FileResponse audio/wav :56-60"]:::be
+  end
+
+  subgraph SVC["后端 · 服务"]
+    S1["services/audio.py<br/>get_word_audio() :7"]:::svc
+    S2[("Word.audio_url<br/>models/word.py:50")]:::db
+    S3["services/tts.py<br/>synthesize_word_audio() :89"]:::svc
+    S4["_digest() :30<br/>voice/culture/rate/spelling"]:::svc
+    S5["_build_script() :40<br/>PowerShell SAPI 脚本"]:::svc
+    S6["_run_powershell() :64<br/>asyncio.to_thread"]:::svc
+    S7[("var/tts/*.wav<br/>服务端缓存 :101-103")]:::db
+  end
+
+  V1{{"word 存在？"}}:::dec
+  V2{{"audio_url 非空？"}}:::dec
+  V3{{"缓存命中？"}}:::dec
+  V4{{"系统语音可用？"}}:::dec
+  E1["404 / 40401 单词不存在"]:::err
+  E2["TtsUnavailableError → 503 / 50301"]:::err
+  R1["返回 {audio_url, fallback}"]:::ok
+  R2["返回 {tts_text: spelling, fallback:'tts'}"]:::ok
+
+  A1 --> A2
+  A2 -->|是| A3
+  A2 -->|否| A4 --> B1 -->|"GET /words/{id}/audio"| C1 --> S1 --> V1
+  V1 -->|否| E1
+  V1 -->|是| S2 --> V2
+  V2 -->|是| R1 --> A6
+  V2 -->|否| R2 --> A5
+  A6 -->|是| A7
+  A6 -->|否| A5
+  A5 --> B2 -->|"GET /words/{id}/audio/file"| C2 --> S3
+  S3 --> V4
+  V4 -->|否| E2
+  V4 -->|是| S4 --> V3
+  V3 -->|是| S7 --> C2
+  V3 -->|否| S5 --> S6 --> S7
+  C2 --> A6
+  A6 -->|否| A8 --> A9
+  A3 --> A10
+  A7 --> A10
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from langsmith import tracing_context
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
@@ -31,20 +32,27 @@ async def _stream_chat(
     payload: AgentChatIn,
     history: list[ChatMessage],
     conversation_id: int,
+    user_id: int,
 ) -> AsyncIterator[str]:
     """转发 Agent 事件并按需累计回复文本。"""
     chunks: list[str] = []
+    metadata = {
+        "user_id": user_id,
+        "conversation_id": conversation_id,
+        "scene": payload.scene or "",
+    }
     try:
-        async for event, data in service.stream_events(
-            payload.message,
-            scene=payload.scene,
-            history=history,
-        ):
-            if event == "meta":
-                data = {**data, "conversation_id": conversation_id}
-            elif event == "delta":
-                chunks.append(data.get("content", ""))
-            yield format_sse(event, data)
+        with tracing_context(metadata=metadata):
+            async for event, data in service.stream_events(
+                payload.message,
+                scene=payload.scene,
+                history=history,
+            ):
+                if event == "meta":
+                    data = {**data, "conversation_id": conversation_id}
+                elif event == "delta":
+                    chunks.append(data.get("content", ""))
+                yield format_sse(event, data)
     except Exception:
         logger.exception("Agent 对话生成失败")
         yield format_sse("error", {"message": "对话生成失败，请稍后再试"})
@@ -71,9 +79,7 @@ async def agent_chat(
 ) -> StreamingResponse:
     """智能伴学对话：Router 识别意图 -> Skill 分发 -> SSE 流式返回。"""
     service = get_agent_service()
-    client_history = [
-        ChatMessage(role=item.role, content=item.content) for item in payload.history
-    ]
+    client_history = [ChatMessage(role=item.role, content=item.content) for item in payload.history]
     conversation_id, history = await prepare_chat_turn(
         session,
         user_id=current_user.id,
@@ -82,5 +88,11 @@ async def agent_chat(
         scene=payload.scene,
         client_history=client_history,
     )
-    stream = _stream_chat(service, payload, history, conversation_id)
+    stream = _stream_chat(
+        service,
+        payload,
+        history,
+        conversation_id,
+        current_user.id,
+    )
     return StreamingResponse(stream, media_type="text/event-stream", headers=SSE_HEADERS)

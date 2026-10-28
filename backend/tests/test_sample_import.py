@@ -2,9 +2,7 @@ from pathlib import Path
 
 from app.services.import_file import parse_import_file, parse_word_row
 
-SAMPLE_FILE = (
-    Path(__file__).resolve().parents[2] / "docs" / "examples" / "sample-words.csv"
-)
+SAMPLE_FILE = Path(__file__).resolve().parents[2] / "docs" / "examples" / "sample-words.csv"
 
 
 def test_sample_wordbook_can_be_parsed_and_imported() -> None:

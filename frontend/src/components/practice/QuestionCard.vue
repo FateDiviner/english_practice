@@ -72,7 +72,8 @@ function submit() {
           :key="`${question.word_id}-${accent}`"
           :word-id="question.word_id"
           :audio-url="question.audio_url || ''"
-          :label="question.meaning_cn || 'word'"
+          :accent="accent"
+          label="单词"
         />
       </div>
       <p class="prompt-pos">{{ question.part_of_speech || '词汇' }}</p>

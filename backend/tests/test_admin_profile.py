@@ -37,9 +37,7 @@ async def _clean_data() -> None:
             await session.scalars(select(User.id).where(User.username.like(f"{PREFIX}%")))
         )
         wordbook_ids = list(
-            await session.scalars(
-                select(Wordbook.id).where(Wordbook.name.like(f"{PREFIX}%"))
-            )
+            await session.scalars(select(Wordbook.id).where(Wordbook.name.like(f"{PREFIX}%")))
         )
         if not user_ids:
             await session.commit()
@@ -59,9 +57,7 @@ async def _clean_data() -> None:
             await session.execute(
                 delete(SessionQuestion).where(SessionQuestion.session_id.in_(session_ids))
             )
-        await session.execute(
-            delete(PracticeSession).where(PracticeSession.user_id.in_(user_ids))
-        )
+        await session.execute(delete(PracticeSession).where(PracticeSession.user_id.in_(user_ids)))
         if wordbook_ids:
             await session.execute(delete(Word).where(Word.wordbook_id.in_(wordbook_ids)))
             await session.execute(delete(Wordbook).where(Wordbook.id.in_(wordbook_ids)))
@@ -240,15 +236,11 @@ async def test_profile_returns_structured_report_and_uses_cache(client) -> None:
     assert first_data["agents"]["data"]["source"] == "heuristic"
     assert len(first_data["agents"]["diagnosis"]["focus_words"]) == 4
     assert any(
-        item["kind"] == "prefix"
-        for item in first_data["agents"]["diagnosis"]["error_patterns"]
+        item["kind"] == "prefix" for item in first_data["agents"]["diagnosis"]["error_patterns"]
     )
     assert len(first_data["agents"]["planner"]["review_plan"]) == 7
     assert len(first_data["summary"]["radar_metrics"]) == 8
-    assert all(
-        0 <= item["score"] <= 100
-        for item in first_data["summary"]["radar_metrics"]
-    )
+    assert all(0 <= item["score"] <= 100 for item in first_data["summary"]["radar_metrics"])
     assert 0 <= first_data["summary"]["confidence"] <= 1
     assert all(
         0 <= first_data["agents"][key]["confidence"] <= 1
@@ -312,6 +304,7 @@ async def test_invalid_llm_json_falls_back_to_deterministic_expert() -> None:
     assert result.source == "heuristic"
     assert result.metrics[0].score == 0
     assert "样本不足" in result.tags
+
 
 def test_blackboard_entries_support_tag_reads_and_solution() -> None:
     blackboard = _empty_blackboard()
