@@ -41,6 +41,8 @@ async def _propose(
     reason: str,
 ) -> dict[str, Any]:
     admin = await auth.authenticate_admin(ctx.headers)
+    if not admin.can_write:
+        raise ToolError("该 MCP 令牌只有只读权限，不能提交变更申请")
     client_name, client_ip = auth.client_metadata(ctx.headers)
     async with async_session_factory() as session:
         try:
@@ -90,8 +92,12 @@ async def _with_session(
     tool_name: str,
     params: dict[str, Any],
     handler: Any,
+    *,
+    require_write: bool = False,
 ) -> dict[str, Any]:
     admin = await auth.authenticate_admin(ctx.headers)
+    if require_write and not admin.can_write:
+        raise ToolError("该 MCP 令牌只有只读权限，不能执行此操作")
     client_name, client_ip = auth.client_metadata(ctx.headers)
     async with async_session_factory() as session:
         try:
@@ -394,4 +400,5 @@ def register_write_tools(server: MCPServer) -> None:
             "cancel_change_request",
             {"request_id": request_id},
             handler,
+            require_write=True,
         )

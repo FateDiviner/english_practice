@@ -112,7 +112,6 @@ class McpAuditLog(Base):
 
 class McpImportUpload(Base):
     """MCP 导入文件暂存，审批通过并创建导入任务后标记为已消费。"""
-
     __tablename__ = "mcp_import_uploads"
     __table_args__ = (
         Index("idx_mcp_import_uploads_uploaded_by", "uploaded_by"),
@@ -137,3 +136,35 @@ class McpImportUpload(Base):
         server_default=func.now(),
     )
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class McpAccessToken(Base):
+    """外部 MCP 客户端使用的长期访问令牌，仅保存哈希值。"""
+
+    __tablename__ = "mcp_access_tokens"
+    __table_args__ = (
+        Index("idx_mcp_access_tokens_created_by", "created_by"),
+        {
+            "mysql_charset": "utf8mb4",
+            "mysql_collate": "utf8mb4_unicode_ci",
+        },
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    token_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    scopes: Mapped[str] = mapped_column(String(32), nullable=False, server_default="read")
+    created_by: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.id", name="fk_mcp_access_tokens_created_by", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     LANGSMITH_HIDE_OUTPUTS: bool = False
     MCP_ENABLED: bool = False
     MCP_CONFIRM_TTL_MINUTES: int = 30
+    MCP_PUBLIC_URL: str = "http://127.0.0.1:8000/mcp"
+    MCP_TOKEN_DEFAULT_DAYS: int = 90
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",

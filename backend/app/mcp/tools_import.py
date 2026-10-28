@@ -113,6 +113,8 @@ def register_import_tools(server: MCPServer) -> None:
         reason: str = "",
     ) -> dict[str, Any]:
         admin = await auth.authenticate_admin(ctx.headers)
+        if not admin.can_write:
+            raise ToolError("该 MCP 令牌只有只读权限，不能提交导入申请")
         client_name, client_ip = auth.client_metadata(ctx.headers)
         async with async_session_factory() as session:
             try:

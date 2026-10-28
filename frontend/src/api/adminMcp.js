@@ -23,3 +23,19 @@ export function rejectMcpChange(requestId, reason = '') {
     reason: reason || null,
   })
 }
+
+export function getMcpConnection() {
+  return request.get('/admin/mcp-tokens/connection')
+}
+
+export function listMcpTokens() {
+  return request.get('/admin/mcp-tokens')
+}
+
+export function createMcpToken(payload) {
+  return request.post('/admin/mcp-tokens', payload)
+}
+
+export function revokeMcpToken(tokenId) {
+  return request.post(`/admin/mcp-tokens/${tokenId}/revoke`)
+}

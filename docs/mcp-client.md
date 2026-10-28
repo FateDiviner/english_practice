@@ -22,23 +22,30 @@ uv run uvicorn app.main:app --reload --port 8000
 
 MCP 端点为 `http://127.0.0.1:8000/mcp`，与 `/api/v1` 相互独立。
 
-## 2. 获取管理员令牌
+## 2. 创建客户端令牌
+
+打开管理端「A6 MCP 接入」页（`/admin/mcp-access`）：
+
+1. 填写令牌名称，选择权限：只读，或可提交变更（写操作仍需人工审批）。
+2. 选择有效期（30 天 / 90 天 / 1 年 / 永不过期）。
+3. 创建后页面会显示一次明文令牌，并提供 Claude Code、Claude Desktop、VS Code 的现成配置，可直接复制。
+4. 令牌泄露或不再使用时，在同一页面点「吊销」立即失效。
+
+也可以用接口创建（需要管理员 JWT）：
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+curl -X POST http://127.0.0.1:8000/api/v1/admin/mcp-tokens \
+  -H "Authorization: Bearer <管理员 JWT>" \
   -H "Content-Type: application/json" \
-  -d "{\"account\":\"<管理员账号>\",\"password\":\"<密码>\"}"
+  -d "{\"name\":\"Claude Code\",\"scopes\":\"write\",\"expires_in_days\":90}"
 ```
-
-响应中的 `data.access_token` 即管理员 JWT。令牌默认 120 分钟过期
-（`JWT_EXPIRE_MINUTES`），过期后重新登录并在客户端更新请求头。
 
 ## 3. 配置客户端
 
 ### Claude Code
 
 ```bash
-claude mcp add --transport http english-practice-admin http://127.0.0.1:8000/mcp --header "Authorization: Bearer <管理员 JWT>"
+claude mcp add --transport http english-practice-admin http://127.0.0.1:8000/mcp --header "Authorization: Bearer <MCP 客户端令牌>"
 ```
 
 ### 通用 MCP JSON 配置
@@ -50,7 +57,7 @@ claude mcp add --transport http english-practice-admin http://127.0.0.1:8000/mcp
       "type": "http",
       "url": "http://127.0.0.1:8000/mcp",
       "headers": {
-        "Authorization": "Bearer <管理员 JWT>"
+        "Authorization": "Bearer <MCP 客户端令牌>"
       }
     }
   }
@@ -79,8 +86,9 @@ claude mcp add --transport http english-practice-admin http://127.0.0.1:8000/mcp
 
 ## 6. 安全约束
 
-- 每个 HTTP 请求都会校验管理员 JWT，并回查数据库确认 `role=admin`、`status=active`。
-- 写工具只写 `mcp_change_requests`，不触碰业务表；执行只发生在管理端审批接口。
+- 每个 HTTP 请求都会校验客户端令牌或管理员 JWT，并回查数据库确认创建者 `role=admin`、`status=active`。
+- 客户端令牌只保存 SHA-256 哈希，明文只在创建时返回一次；可随时吊销。
+- 只读令牌不能调用写提案工具；可写令牌也只能生成申请，执行仍发生在管理端审批接口。
 - 审批使用条件更新防止并发重复执行；申请默认 30 分钟过期。
 - `mcp_audit_logs` 记录工具调用、提案、审批与驳回，参数中的密码/令牌/文件内容会脱敏。
 - 导入文件暂存在 `mcp_import_uploads`，上限 10MB，审批执行后标记为已消费。

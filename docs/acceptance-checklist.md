@@ -21,7 +21,7 @@
 | F13 管理员数据概览 | 通过 | `backend/tests/test_admin_stats.py`、`Overview.vue` | 六项指标 |
 | F14 AI 英语对话（原预留） | 已由正式实现取代 | 见下节 | 原“返回 501”的占位验收不再适用 |
 | F14 AI 英语对话（正式） | 通过（本轮实现） | `backend/tests/test_ai.py`、`test_agent.py`、`frontend/tests/sse.test.js`、`AiChat.vue` | 见下节 |
-| F15 管理端 MCP 服务 | 通过（本轮实现） | `backend/tests/test_mcp.py`、`McpApprovals.vue` | 见 F15 验收点 |
+| F15 管理端 MCP 服务 | 通过（本轮实现） | `backend/tests/test_mcp.py`、`test_mcp_tokens.py`、`McpApprovals.vue`、`McpAccess.vue` | 见 F15 验收点 |
 
 ### F14 新验收点
 
@@ -46,6 +46,9 @@
 - [x] 工具调用、提案、审批与驳回写入 `mcp_audit_logs`，敏感参数脱敏
 - [x] 不开放重置用户密码
 - [x] 管理端 `/admin/mcp-approvals` 可选择待审批申请并通过/驳回
+- [x] 管理端 `/admin/mcp-access` 可创建长期客户端令牌，明文只显示一次
+- [x] 令牌只保存 SHA-256 哈希，列表仅显示前缀
+- [x] 只读令牌调用写提案被拒绝；吊销或过期令牌立即返回 401
 
 ### 尚未覆盖 / 后续项
 
@@ -73,6 +76,6 @@
 | 函数 ≤40 行、文件 ≤300 行、嵌套 ≤3 层 | 基本通过 | 超长组件已拆分；查询与编排函数保持浅层嵌套 |
 | 无魔法数字，阈值已提常量 | 通过 | 标题长度、历史条数、SSE 分包边界均已提常量 |
 | 复杂逻辑有注释说明规则来源 | 通过 | 黑板书、SSE 中断落库、F7 统计口径均有说明 |
-| service 有对应单元测试且真实通过 | 通过 | 后端 192 个测试全部通过 |
+| service 有对应单元测试且真实通过 | 通过 | 后端 197 个测试全部通过 |
 | 已在 Swagger 手动验证接口返回 | 未执行 | 由 pytest 覆盖；如需可按 `.agents/AGENTS.md` 启动后在 `/docs` 复核 |
 | 字段名与接口路径与文档一致 | 通过 | 已同步 `docs/api-contract.md` |

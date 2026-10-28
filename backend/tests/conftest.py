@@ -5,7 +5,7 @@ from app.core.config import get_settings
 from app.db.session import async_session_factory
 from app.main import app
 from app.models.import_job import ImportJob
-from app.models.mcp import McpAuditLog, McpChangeRequest, McpImportUpload
+from app.models.mcp import McpAccessToken, McpAuditLog, McpChangeRequest, McpImportUpload
 from app.models.practice_record import PracticeRecord
 from app.models.practice_session import PracticeSession
 from app.models.session_question import SessionQuestion
@@ -28,6 +28,9 @@ async def clean_answer_data() -> None:
         wordbook_ids = select(Wordbook.id).where(Wordbook.name.like("pytest_answer_wb_%"))
         session_ids = select(PracticeSession.id).where(PracticeSession.user_id.in_(user_ids))
         await session.execute(delete(McpAuditLog).where(McpAuditLog.admin_id.in_(user_ids)))
+        await session.execute(
+            delete(McpAccessToken).where(McpAccessToken.created_by.in_(user_ids))
+        )
         await session.execute(
             delete(McpChangeRequest).where(McpChangeRequest.requested_by.in_(user_ids))
         )

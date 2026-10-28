@@ -13,6 +13,13 @@ from app.core.exception_handlers import (
 from app.core.security import TokenDecodeError, decode_access_token
 from app.db.session import async_session_factory
 from app.models.user import User
+from app.services.mcp_token import (
+    SCOPE_WRITE,
+    TOKEN_PREFIX,
+    resolve_token,
+    token_is_expired,
+    touch_token,
+)
 
 
 @dataclass(frozen=True)
@@ -20,6 +27,8 @@ class McpAdmin:
     id: int
     username: str
     role: str
+    can_write: bool = True
+    token_id: int | None = None
 
 
 def _header(headers: Mapping[str, str], name: str) -> str | None:
@@ -41,20 +50,23 @@ def client_metadata(headers: Mapping[str, str] | None) -> tuple[str | None, str 
 
 
 async def authenticate_admin(headers: Mapping[str, str] | None) -> McpAdmin:
-    """校验 MCP 请求的 Bearer Token，并从数据库确认管理员身份。"""
+    """校验 MCP 请求的 Bearer Token：支持长期客户端令牌与管理员 JWT。"""
     authorization = _header(headers or {}, "authorization")
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 请求缺少管理员令牌")
+        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 请求缺少访问令牌")
 
     token = authorization[7:].strip()
     if not token:
-        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 请求缺少管理员令牌")
+        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 请求缺少访问令牌")
+
+    if token.startswith(TOKEN_PREFIX):
+        return await _authenticate_client_token(token)
 
     try:
         payload = decode_access_token(token)
         user_id = int(payload["sub"])
     except (KeyError, TypeError, ValueError, TokenDecodeError) as exc:
-        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "管理员令牌无效或已过期") from exc
+        raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "访问令牌无效或已过期") from exc
 
     async with async_session_factory() as session:
         user = await session.get(User, user_id)
@@ -64,7 +76,34 @@ async def authenticate_admin(headers: Mapping[str, str] | None) -> McpAdmin:
     if user.role != "admin":
         raise AppError(403, ERROR_CODE_FORBIDDEN, "无管理员权限")
 
-    return McpAdmin(id=user.id, username=user.username, role=user.role)
+    return McpAdmin(id=user.id, username=user.username, role=user.role, can_write=True)
+
+
+async def _authenticate_client_token(token: str) -> McpAdmin:
+    async with async_session_factory() as session:
+        access = await resolve_token(session, token)
+        if access is None:
+            raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 客户端令牌无效")
+        if access.revoked_at is not None:
+            raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 客户端令牌已被吊销")
+        if token_is_expired(access):
+            raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "MCP 客户端令牌已过期")
+
+        user = await session.get(User, access.created_by)
+        if user is None or user.status != "active":
+            raise AppError(401, ERROR_CODE_UNAUTHENTICATED, "令牌创建者账号不存在或已被禁用")
+        if user.role != "admin":
+            raise AppError(403, ERROR_CODE_FORBIDDEN, "无管理员权限")
+
+        await touch_token(session, access)
+
+    return McpAdmin(
+        id=user.id,
+        username=user.username,
+        role=user.role,
+        can_write=access.scopes == SCOPE_WRITE,
+        token_id=access.id,
+    )
 
 
 class McpAuthMiddleware:

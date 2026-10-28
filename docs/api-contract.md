@@ -228,9 +228,31 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
 响应 data：`status=rejected` 的申请记录。
 错误：404；409 已被处理
 
+## 管理员 · MCP 接入令牌
+所有接口需要管理员 JWT；客户端令牌明文只在创建响应出现一次。
+
+### GET /admin/mcp-tokens/connection
+响应 data：{ enabled: bool, endpoint: str, default_expires_in_days: int }
+
+### GET /admin/mcp-tokens
+响应 data：{ items: [ { id, name, token_prefix, scopes, created_by, created_by_username,
+created_at, expires_at, last_used_at, revoked_at } ] }
+规则：不返回令牌明文与哈希；`scopes` 为 read / write。
+
+### POST /admin/mcp-tokens
+请求：{ name: str（≤100）, scopes: "read" | "write"（默认 read）, expires_in_days: int | null（默认 90） }
+响应 201 data：令牌字段 + { token: "mcp_...", endpoint: str }
+规则：`token` 只在本响应返回一次；`expires_in_days=null` 表示永不过期。
+
+### POST /admin/mcp-tokens/{id}/revoke
+响应 data：被吊销的令牌记录；重复吊销返回 409。
+
 ## MCP 服务（Streamable HTTP）
 - 端点：`POST /mcp`，独立于 `/api/v1`；需在 `.env` 设置 `MCP_ENABLED=true` 后启用。
-- 鉴权：`Authorization: Bearer <管理员 JWT>`；缺失或无效返回 401，非管理员返回 403。
+- 鉴权：`Authorization: Bearer mcp_...`（管理端创建的长期客户端令牌）或 `Bearer <管理员 JWT>`；
+  缺失或无效返回 401，非管理员返回 403。
+- 权限：`scopes=read` 的令牌只能调用只读工具；`scopes=write` 才能调用 `propose_*` 与 `cancel_change_request`，
+  且写操作仍需人工审批。
 - 传输：stateless streamable HTTP，JSON 响应；待审批申请默认 30 分钟过期（`MCP_CONFIRM_TTL_MINUTES`）。
 
 只读工具：

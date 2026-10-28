@@ -18,6 +18,7 @@ const items = [
     to: '/admin/mcp-approvals',
     name: 'admin-mcp-approvals',
   },
+  { index: 'A6', label: 'MCP 接入', to: '/admin/mcp-access', name: 'admin-mcp-access' },
 ]
 const activeName = computed(() => route.name)
 
