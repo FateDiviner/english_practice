@@ -1,0 +1,14 @@
+# 构建上下文排除项：node_modules 与 dist 由镜像内重新安装和构建。
+node_modules/
+dist/
+.vite/
+.env
+.env.*
+!.env.example
+.DS_Store
+.git/
+.gitignore
+.eslintcache
+tests/
+Dockerfile
+.dockerignore

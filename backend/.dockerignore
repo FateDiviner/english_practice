@@ -1,0 +1,20 @@
+# 构建上下文排除项：只保留运行所需文件，避免把本机环境塞进镜像。
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.idea/
+.vscode/
+tests/
+var/
+.git/
+.gitignore
+Dockerfile
+.dockerignore
+*.md
+stats.json
