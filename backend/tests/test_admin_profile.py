@@ -221,6 +221,13 @@ async def test_profile_returns_structured_report_and_uses_cache(client) -> None:
     _, user_id = await _create_user(client, "report_user")
     await _seed_learning_data(admin_id, user_id)
 
+    not_cached = await client.get(
+        f"/api/v1/admin/users/{user_id}/profile",
+        headers=admin_headers,
+    )
+    assert not_cached.status_code == 200
+    assert not_cached.json()["data"] is None
+
     first = await client.post(
         f"/api/v1/admin/users/{user_id}/profile",
         headers=admin_headers,
@@ -256,6 +263,16 @@ async def test_profile_returns_structured_report_and_uses_cache(client) -> None:
     assert second_data["cache"]["hit"] is True
     assert second_data["generated_at"] == first_data["generated_at"]
     assert second_data["summary"] == first_data["summary"]
+
+    cached_only = await client.get(
+        f"/api/v1/admin/users/{user_id}/profile",
+        headers=admin_headers,
+    )
+    assert cached_only.status_code == 200
+    cached_data = cached_only.json()["data"]
+    assert cached_data["cache"]["hit"] is True
+    assert cached_data["generated_at"] == first_data["generated_at"]
+    assert cached_data["summary"] == first_data["summary"]
 
 
 async def test_profile_handles_user_without_learning_data(client) -> None:

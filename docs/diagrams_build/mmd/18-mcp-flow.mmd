@@ -1,0 +1,132 @@
+---
+title: MCP 服务全流程
+config:
+  flowchart:
+    subGraphTitleMargin:
+      top: 10
+      bottom: 6
+---
+flowchart TB
+  subgraph SETUP["① 准备 · 管理端创建 MCP 令牌"]
+    S1["管理员登录管理端<br/>打开 /admin/mcp/access"]:::fe
+    S2["创建令牌<br/>scopes: read / write<br/>有效期 30 / 90 / 365 天 / 永不"]:::dec
+    S3["生成 mcp_ + urlsafe32<br/>数据库只存 SHA-256 哈希<br/>明文仅创建时返回一次"]:::be
+    S4["复制客户端配置<br/>Claude Code / Desktop / VS Code"]:::api
+    S1 --> S2 --> S3 --> S4
+  end
+
+  subgraph CLIENT["② 调用"]
+    C1["外部 AI 客户端<br/>POST /mcp<br/>Authorization: Bearer ..."]:::fe
+  end
+  S4 --> C1
+
+  subgraph GATE["③ 接入与鉴权"]
+    G0{"MCP_ENABLED?"}:::dec
+    G1["404 未挂载"]:::err
+    G2["路径重写<br/>McpPathRewriteMiddleware"]:::be
+    G3["鉴权中间件<br/>McpAuthMiddleware"]:::be
+    G4{"JWT 还是 mcp_ 令牌?"}:::dec
+    G5["校验管理员 JWT<br/>或查 mcp_access_tokens"]:::be
+    G6{"有效?<br/>未吊销 / 未过期<br/>创建者仍为 active 管理员"}:::dec
+    G7["401 / 403"]:::err
+    G8["McpAdmin 身份<br/>can_write = scopes == write"]:::ok
+    G0 -->|"否"| G1
+    G0 -->|"是"| G2 --> G3 --> G4 --> G5 --> G6
+    G6 -->|"否"| G7
+    G6 -->|"是"| G8
+  end
+  C1 --> G0
+
+  subgraph DISPATCH["④ 工具分发"]
+    T0{"工具类型?"}:::dec
+    T1["只读工具<br/>overview / users / words / wordbooks<br/>含 get / list_change_requests"]:::svc
+    T2["写申请工具 propose_*<br/>词书、单词、用户状态、画像刷新"]:::svc
+    T3["导入工具<br/>preview_import / propose_import"]:::svc
+    G8 --> T0
+    T0 -->|"只读"| T1
+    T0 -->|"写申请"| T2
+    T0 -->|"导入"| T3
+  end
+
+  subgraph READ["⑤A 只读：直接执行"]
+    R1["调用业务 service 查询<br/>users / wordbooks / words / import_jobs"]:::svc
+    R2["写 mcp_audit_logs<br/>success / error"]:::svc
+    R3["返回 JSON"]:::ok
+    T1 --> R1 --> R2 --> R3
+  end
+
+  subgraph WRITE["⑤B 写操作：只提案，不改业务数据"]
+    W1{"can_write?"}:::dec
+    W2["ToolError<br/>只读令牌拒绝"]:::err
+    W3["现有 Pydantic Schema 校验<br/>生成 summary / target_id"]:::svc
+    W4["INSERT mcp_change_requests<br/>status=pending<br/>30 分钟过期"]:::svc
+    W5["审计 outcome=proposed<br/>返回 request_id"]:::ok
+    T2 --> W1
+    W1 -->|"否"| W2
+    W1 -->|"是"| W3 --> W4 --> W5
+  end
+
+  subgraph IMPORT["⑤C 导入：预览或提案"]
+    I1["preview_import<br/>base64 解码 / 10MB 限制<br/>解析 CSV TSV TXT XLSX"]:::svc
+    I2["返回表头与前 N 行<br/>不写任何数据"]:::ok
+    I3["propose_import<br/>文件存 mcp_import_uploads"]:::svc
+    I4["创建 word.import 申请<br/>status=pending"]:::svc
+    T3 --> I1 --> I2
+    T3 --> I3 --> I4
+  end
+
+  subgraph APPROVE["⑥ 管理端审批 · /admin/mcp/approvals"]
+    A0["待审批申请<br/>mcp_change_requests / status=pending"]:::db
+    A1["McpApprovals.vue<br/>15 秒轮询；列表时 expire_stale() 标记过期<br/>展示摘要、参数、申请人、客户端 IP"]:::fe
+    A2{"管理员动作?"}:::dec
+    A3["通过并执行<br/>POST /{id}/approve"]:::ok
+    A4["条件 UPDATE<br/>status=pending 且未过期"]:::be
+    A5{"抢占成功?"}:::dec
+    A6["409 已处理 / 已过期"]:::err
+    A7["按 action_type 查 ACTIONS 执行"]:::svc
+    A8["驳回 / 撤回<br/>cancel_change_request<br/>rejected / cancelled"]:::err
+    A0 --> A1 --> A2
+    A2 -->|"通过"| A3 --> A4 --> A5
+    A5 -->|"否"| A6
+    A5 -->|"是"| A7
+    A2 -->|"驳回或撤回"| A8
+  end
+  W4 --> A0
+  I4 --> A0
+
+  subgraph EXEC["⑦ ACTIONS 执行分支"]
+    X1{"action_type?"}:::dec
+    X2["word.import<br/>建 import_job<br/>upload 标记已消费"]:::svc
+    X3["后台任务 process_import_job<br/>异步写入单词"]:::svc
+    X4["user.profile_refresh<br/>ProfileOrchestrator.analyze()<br/>黑板四专家"]:::svc
+    X5["词书 / 单词 / 用户状态<br/>调用业务 service 直接落库"]:::svc
+    X6["executed<br/>result 写入"]:::ok
+    X7["failed<br/>error_message 写入"]:::err
+    A7 --> X1
+    X1 -->|"word.import"| X2 --> X3
+    X1 -->|"user.profile_refresh"| X4
+    X1 -->|"其余 CRUD"| X5
+    X2 --> X6
+    X3 --> X6
+    X4 --> X6
+    X5 --> X6
+    X5 -->|"异常"| X7
+  end
+
+  subgraph TRACK["⑧ 结果追踪与审计"]
+    K1["客户端 get / list_change_requests<br/>读 status / result / error_message"]:::ok
+    K2["mcp_audit_logs<br/>工具调用 / 提案 / 审批脱敏记录"]:::svc
+    W5 --> K1
+    X6 --> K1
+    X6 --> K2
+    A8 --> K2
+  end
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

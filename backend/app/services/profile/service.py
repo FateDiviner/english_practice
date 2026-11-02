@@ -173,6 +173,14 @@ class ProfileOrchestrator:
             return report
 
         report, hit, expires_at = await self._cache.get_or_create(cache_key, run_experts)
+        return self._with_cache_info(report, hit, expires_at)
+
+    def _with_cache_info(
+        self,
+        report: UserProfileOut,
+        hit: bool,
+        expires_at: datetime,
+    ) -> UserProfileOut:
         return report.model_copy(
             update={
                 "cache": ProfileCacheOut(
@@ -182,6 +190,15 @@ class ProfileOrchestrator:
                 )
             }
         )
+
+    async def read_cached(self, session: AsyncSession, user_id: int) -> UserProfileOut | None:
+        """Return a still-valid cached report without running any expert."""
+        blackboard = await collect_blackboard(session, user_id)
+        cached = self._cache.peek(f"{user_id}:{blackboard.fingerprint()}")
+        if cached is None:
+            return None
+        report, expires_at = cached
+        return self._with_cache_info(report, True, expires_at)
 
 
 @lru_cache

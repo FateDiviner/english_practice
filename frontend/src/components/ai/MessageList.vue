@@ -140,7 +140,7 @@ function metaLabel(meta) {
 }
 
 .message {
-  max-width: min(720px, 86%);
+  max-width: min(820px, 90%);
   padding: 14px 18px;
   border: 1px solid var(--color-border);
 }

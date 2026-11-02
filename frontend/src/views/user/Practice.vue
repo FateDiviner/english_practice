@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { listWordbooks } from '../../api/wordbooks'
@@ -18,6 +18,7 @@ const setupError = ref('')
 const actionError = ref('')
 const answerInput = ref('')
 const hintEnabled = ref(false)
+const questionCard = ref(null)
 const activeConfig = reactive({ mode: 'normal', wordbookId: null, count: 10, strictMode: true })
 
 const initialMode = computed(() => (route.query.mode === 'wrong_only' ? 'wrong_only' : 'normal'))
@@ -120,6 +121,16 @@ function replay() {
   })
 }
 
+watch(
+  () => [practiceStore.phase, practiceStore.currentIndex],
+  async ([phase]) => {
+    if (phase !== 'answering') return
+    await nextTick()
+    questionCard.value?.focus()
+  },
+  { immediate: true },
+)
+
 function handleGlobalKeydown(event) {
   if (event.key !== 'Enter' || event.isComposing) return
   const tagName = event.target?.tagName
@@ -179,6 +190,7 @@ onBeforeUnmount(() => {
         {{ actionError }}
       </p>
       <QuestionCard
+        ref="questionCard"
         :question="practiceStore.currentQuestion"
         :index="practiceStore.currentIndex"
         :total="practiceStore.total"

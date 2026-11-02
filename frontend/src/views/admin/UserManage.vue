@@ -5,6 +5,7 @@ import {
   getAdminUserProfile,
   getAdminUserStats,
   listAdminUsers,
+  readAdminUserProfile,
   updateAdminUserStatus,
 } from '../../api/admin'
 import PagePagination from '../../components/PagePagination.vue'
@@ -106,12 +107,18 @@ async function openStats(user) {
   profileError.value = ''
   statsDrawerOpen.value = true
   isLoadingStats.value = true
-  try {
-    stats.value = await getAdminUserStats(user.id)
-  } catch (error) {
-    statsError.value = getErrorMessage(error, '该用户的学习数据暂时无法读取。')
-  } finally {
-    isLoadingStats.value = false
+  const [statsResult, profileResult] = await Promise.allSettled([
+    getAdminUserStats(user.id),
+    readAdminUserProfile(user.id),
+  ])
+  isLoadingStats.value = false
+  if (statsResult.status === 'fulfilled') {
+    stats.value = statsResult.value
+  } else {
+    statsError.value = getErrorMessage(statsResult.reason, '该用户的学习数据暂时无法读取。')
+  }
+  if (profileResult.status === 'fulfilled') {
+    profile.value = profileResult.value
   }
 }
 

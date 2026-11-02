@@ -196,6 +196,11 @@ practice_sessions 装入 Blackboard Context。控制器按技能匹配度、优�
   `PROFILE_CACHE_TTL_SECONDS` 控制（21600 秒）。数据变化后自动生成新报告。
 - 未登录返回 401，非管理员返回 403，用户不存在返回 404。
 
+### GET /admin/users/{id}/profile
+只读回看：若该用户当前学习数据对应的画像缓存仍在有效期内，直接返回同一份报告
+（`cache.hit=true`），不会触发四位专家分析；否则 `data` 为 `null`，由管理端决定是否
+调用上面的 POST 重新生成。响应结构同 POST。
+
 ## 管理员 · 概览
 ### GET /admin/overview
 响应 data：{ total_users, active_users, total_wordbooks, total_words, today_sessions, today_answers }

@@ -58,7 +58,7 @@ function handleKeydown(event) {
       class="composer__input"
       :maxlength="MAX_LENGTH"
       :disabled="disabled"
-      rows="3"
+      rows="2"
       placeholder="用英文或中文提问，例如：abandon 是什么意思？"
       @keydown="handleKeydown"
     ></textarea>
@@ -77,7 +77,7 @@ function handleKeydown(event) {
 
 <style scoped>
 .composer {
-  padding-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-border);
 }
 
@@ -86,7 +86,7 @@ function handleKeydown(event) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .composer__scene {
@@ -110,7 +110,9 @@ function handleKeydown(event) {
 
 .composer__input {
   width: 100%;
-  padding: 12px 14px;
+  min-height: 76px;
+  max-height: 240px;
+  padding: 10px 14px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -130,7 +132,7 @@ function handleKeydown(event) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .composer__actions p {

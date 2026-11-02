@@ -33,8 +33,8 @@ docker pull docker/dockerfile:1
 把项目放到服务器上，例如：
 
 ```bash
-cd /opt
-git clone <仓库地址> english-practice
+#cd 进你要保存的目录
+git clone -b rebuild_vue https://gitee.com/wind-passing-without-a-trace/english_practice.git
 cd english-practice
 ```
 

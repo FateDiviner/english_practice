@@ -16,6 +16,17 @@ router = APIRouter(
 )
 
 
+@router.get("/{user_id}/profile", response_model=ApiResponse[UserProfileOut])
+async def read_user_profile_endpoint(
+    user_id: int,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    orchestrator: Annotated[ProfileOrchestrator, Depends(get_profile_orchestrator)],
+) -> ApiResponse[UserProfileOut]:
+    """只读回看：有未过期缓存时返回画像，否则 data 为 null，不触发专家分析。"""
+    report = await orchestrator.read_cached(session, user_id)
+    return ApiResponse[UserProfileOut](code=0, message="ok", data=report)
+
+
 @router.post("/{user_id}/profile", response_model=ApiResponse[UserProfileOut])
 async def get_user_profile_endpoint(
     user_id: int,

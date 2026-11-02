@@ -34,6 +34,15 @@ class TTLProfileCache(Generic[T]):
             if lock is None or not lock.locked():
                 self._locks.pop(key, None)
 
+    def peek(self, key: str) -> tuple[T, datetime] | None:
+        """Read a live entry without creating one, so callers never trigger analysis."""
+        now = datetime.now(UTC)
+        self._purge_expired(now)
+        entry = self._entries.get(key)
+        if entry is None or entry.expires_at <= now:
+            return None
+        return entry.value, entry.expires_at
+
     async def get_or_create(
         self,
         key: str,

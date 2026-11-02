@@ -61,8 +61,16 @@ export function getAdminUserStats(userId) {
   return request.get(`/admin/users/${userId}/stats`)
 }
 
+export function readAdminUserProfile(userId) {
+  return request.get(`/admin/users/${userId}/profile`)
+}
+
+const PROFILE_TIMEOUT_MS = 180_000
+
 export function getAdminUserProfile(userId) {
-  return request.post(`/admin/users/${userId}/profile`)
+  return request.post(`/admin/users/${userId}/profile`, undefined, {
+    timeout: PROFILE_TIMEOUT_MS,
+  })
 }
 
 export function previewAdminImport(wordbookId, file) {

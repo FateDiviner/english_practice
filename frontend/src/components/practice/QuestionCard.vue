@@ -18,6 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit', 'next', 'toggle-hint'])
 const accent = ref('uk')
+const spellInput = ref(null)
 
 const phonetic = computed(() => {
   if (accent.value === 'us') return props.question.phonetic_us || props.question.phonetic_uk || '—'
@@ -35,6 +36,8 @@ function submit() {
   if (isBusy.value || isSubmitted.value || !props.modelValue.trim()) return
   emit('submit')
 }
+
+defineExpose({ focus: () => spellInput.value?.focus() })
 </script>
 
 <template>
@@ -82,6 +85,7 @@ function submit() {
 
     <div class="answer-area">
       <SpellInput
+        ref="spellInput"
         :model-value="modelValue"
         :disabled="isBusy || isSubmitted"
         :status="status"

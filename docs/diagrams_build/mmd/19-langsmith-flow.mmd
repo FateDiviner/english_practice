@@ -1,0 +1,93 @@
+---
+title: LangSmith 追踪全流程
+config:
+  flowchart:
+    wrappingWidth: 320
+    subGraphTitleMargin:
+      top: 10
+      bottom: 6
+---
+flowchart TB
+  subgraph CONFIG["① 启动配置 · app/core/tracing.py"]
+    C0[".env / 环境变量<br/>LANGSMITH_TRACING / API_KEY / PROJECT<br/>ENDPOINT / SAMPLING_RATE / HIDE_INPUTS / HIDE_OUTPUTS<br/>backend/.env.example :17-23"]:::be
+    C1["main.py:create_app() :22<br/>configure_langsmith() :14"]:::be
+    C2{"TRACING 且 API_KEY?"}:::dec
+    C3["写入 SDK 环境变量<br/>TRACING=true / API_KEY / PROJECT<br/>ENDPOINT / SAMPLING_RATE / HIDE_*"]:::be
+    C4["TRACING=false<br/>@traceable 全部 no-op"]:::err
+    C5["告警：TRACING=true 但缺少 API_KEY"]:::err
+    C6["LangSmith SDK 就绪<br/>@traceable 开始创建 RunTree"]:::ok
+    C0 --> C1 --> C2
+    C2 -->|"是"| C3 --> C6
+    C2 -->|"否"| C4
+    C2 -.->|"TRACING=true 但无 KEY"| C5 --> C4
+  end
+
+  subgraph CHAT["② 用户端对话追踪 · /api/v1/agent/chat"]
+    H1["POST /api/v1/agent/chat"]:::fe
+    H2["_stream_chat() :45<br/>tracing_context(metadata={user_id, conversation_id, scene})"]:::be
+    H3["span: agent.chat<br/>AgentService.stream_events :50-56<br/>inputs: message / scene / history_length"]:::svc
+    H4["span: agent.route<br/>IntentRouter.decide :143-144<br/>output: intent / skill / confidence / fallback_used / reason"]:::svc
+    H5{"关键词命中?"}:::dec
+    H6["span: llm.chat_completion<br/>路由打分（仅未命中时）<br/>metadata: model"]:::api
+    H7["span: llm.chat_completion<br/>技能生成回复<br/>inputs: messages；output: joined chunks"]:::api
+    H8["reduce_fn :29-39<br/>汇总 reply / intent / skill / confidence"]:::ok
+    H9["SSE done / error / abort<br/>span 结束，进入后台上报"]:::ok
+    H1 --> H2 --> H3 --> H4 --> H5
+    H5 -->|"否：调模型打分"| H6 --> H7
+    H5 -->|"是：跳过路由模型"| H7
+    H7 --> H8 --> H9
+  end
+  C6 --> H3
+
+  subgraph PROFILE["③ 管理端画像追踪 · /api/v1/admin/users/{id}/profile"]
+    P1["POST /api/v1/admin/users/{id}/profile"]:::fe
+    P2["span: profile.analyze<br/>ProfileOrchestrator.analyze :154-159<br/>input: user_id"]:::svc
+    P3["BlackboardController.solve()<br/>四位专家按优先级执行"]:::svc
+    P4["span: profile.expert × 4<br/>BaseProfileExpert._refine :109-115<br/>metadata: expert / expert_name"]:::svc
+    P5["span: llm.chat_completion<br/>仅当 LLM 可用；JSON 精修"]:::api
+    P6["无 LLM / JSON 非法<br/>回退 build_fallback<br/>不产生 profile.expert span"]:::err
+    P1 --> P2 --> P3 --> P4 --> P5
+    P3 -.->|"Mock / 未配置模型"| P6
+  end
+
+  subgraph SDK["④ SDK 后台上报"]
+    S1["RunTree：start / end / error<br/>输入、输出、耗时、父子关系"]:::be
+    S2["采样<br/>LANGSMITH_SAMPLING_RATE"]:::dec
+    S3["脱敏<br/>LANGSMITH_HIDE_INPUTS / HIDE_OUTPUTS"]:::dec
+    S4["后台批量 HTTP POST<br/>LangSmith API<br/>默认 api.smith.langchain.com<br/>可用 LANGSMITH_ENDPOINT 覆盖"]:::be
+    S5["上报失败不影响业务请求<br/>best-effort"]:::err
+    H9 --> S1
+    P5 --> S1
+    P6 -.-> S1
+    S1 --> S2 --> S3 --> S4
+    S4 -.->|"网络 / 配额异常"| S5
+  end
+
+  subgraph UI["⑤ LangSmith 项目视图"]
+    U1["Project: LANGSMITH_PROJECT<br/>默认 english-practice"]:::ok
+    U2["Traces / Runs 列表"]:::ok
+    U3["Run Tree<br/>agent.chat → agent.route / llm<br/>profile.analyze → profile.expert × 4 → llm"]:::ok
+    U4["筛选与对比<br/>user_id / conversation_id / scene / expert<br/>延迟、token、输入输出"]:::ok
+    S4 --> U1 --> U2 --> U3 --> U4
+  end
+
+  subgraph NOTE["⑥ 关键细节"]
+    N1["annotate_trace() :33<br/>给当前 span 补 model / expert 元数据<br/>未启用时静默跳过"]:::dec
+    N2["run_type<br/>chain：编排 / 路由 / 专家<br/>llm：真实模型调用"]:::dec
+    N3["process_inputs / process_outputs / reduce_fn<br/>控制上报内容，避免把整段流式数据原样上报"]:::dec
+    N4["MockLLMClient 未加 @traceable<br/>Mock 模式下只有 chain span，没有 llm span"]:::dec
+    H6 -.-> N1
+    P4 -.-> N1
+    H3 -.-> N2
+    S1 -.-> N3
+    H7 -.-> N4
+  end
+
+  classDef fe fill:#e8f1ff,stroke:#3b6ea5,color:#10243a
+  classDef api fill:#e6f7f1,stroke:#2f8f6b,color:#0d2b22
+  classDef be fill:#fff2e0,stroke:#b9770e,color:#3a2503
+  classDef svc fill:#f3e9ff,stroke:#6d4aa8,color:#251238
+  classDef db fill:#eef0f2,stroke:#5b6672,color:#1b2127
+  classDef err fill:#ffe9e9,stroke:#b03a3a,color:#3a0c0c
+  classDef dec fill:#fffbe6,stroke:#a68b00,color:#332b00
+  classDef ok fill:#e9f7ee,stroke:#2e7d4f,color:#0e2a18

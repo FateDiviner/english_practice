@@ -1,5 +1,6 @@
 """Controller for the profile Blackboard architecture."""
 
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
@@ -42,6 +43,33 @@ class BlackboardController:
         overlap = set(source.expertise) & set(problem_tags)
         return len(overlap) / len(problem_tags)
 
+    @staticmethod
+    def _rank(source: KnowledgeSource, problem_tags: Sequence[str]) -> float:
+        return (
+            BlackboardController._match_score(source, problem_tags) * 0.5
+            + min(max(source.priority, 0), 100) / 100 * 0.3
+            + 0.2
+        )
+
+    def select_batch(
+        self,
+        problem_tags: Sequence[str],
+        knowledge_sources: Sequence[KnowledgeSource],
+        blackboard: Blackboard,
+    ) -> list[KnowledgeSource]:
+        """Eligible sources have every dependency completed, so they can run together."""
+        completed = set(blackboard.trace)
+        eligible = [
+            source
+            for source in knowledge_sources
+            if source.key not in completed and set(source.depends_on).issubset(completed)
+        ]
+        return sorted(
+            eligible,
+            key=lambda source: self._rank(source, problem_tags),
+            reverse=True,
+        )
+
     def select_next_ks(
         self,
         problem_tags: Sequence[str],
@@ -49,25 +77,8 @@ class BlackboardController:
         blackboard: Blackboard,
     ) -> KnowledgeSource | None:
         """Prefer unspoken, highly relevant sources whose dependencies are ready."""
-        completed = set(blackboard.trace)
-        eligible = [
-            source
-            for source in knowledge_sources
-            if source.key not in completed and set(source.depends_on).issubset(completed)
-        ]
-        if not eligible:
-            return None
-
-        ranked = sorted(
-            eligible,
-            key=lambda source: (
-                self._match_score(source, problem_tags) * 0.5
-                + min(max(source.priority, 0), 100) / 100 * 0.3
-                + 0.2
-            ),
-            reverse=True,
-        )
-        return ranked[0]
+        batch = self.select_batch(problem_tags, knowledge_sources, blackboard)
+        return batch[0] if batch else None
 
     def evaluate_solution(
         self,
@@ -91,25 +102,26 @@ class BlackboardController:
         rounds = max_iterations or max(1, len(knowledge_sources))
         iterations = 0
         for _ in range(rounds):
-            source = self.select_next_ks(
+            batch = self.select_batch(
                 blackboard.problem_tags,
                 knowledge_sources,
                 blackboard,
             )
-            if source is None:
+            if not batch:
                 break
-            output = await source.analyze(blackboard)
-            entry = BlackboardEntry(
-                id=f"{source.key}_{len(blackboard.entries)}",
-                source=source.name,
-                agent_key=source.key,
-                content=output,
-                confidence=float(getattr(output, "confidence", 0.5)),
-                tags=list(source.expertise),
-            )
-            blackboard.write(entry)
-            blackboard.write_artifact(source.key, output)
-            iterations += 1
+            outputs = await asyncio.gather(*(source.analyze(blackboard) for source in batch))
+            for source, output in zip(batch, outputs, strict=True):
+                entry = BlackboardEntry(
+                    id=f"{source.key}_{len(blackboard.entries)}",
+                    source=source.name,
+                    agent_key=source.key,
+                    content=output,
+                    confidence=float(getattr(output, "confidence", 0.5)),
+                    tags=list(source.expertise),
+                )
+                blackboard.write(entry)
+                blackboard.write_artifact(source.key, output)
+                iterations += 1
 
         solved, confidence, missing = self.evaluate_solution(
             knowledge_sources,
